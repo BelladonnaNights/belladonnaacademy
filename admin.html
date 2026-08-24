@@ -1185,6 +1185,7 @@
               <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
             </div>
             <div style="display:flex;gap:3px;flex-shrink:0;padding:0 12px;">${dots}</div>
+            <button onclick="event.stopPropagation();deleteTrainee('${trainee.id}','${trainee.name?.replace(/'/g,"\\'")||""}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:4px 6px;border-radius:4px;flex-shrink:0;transition:color .15s;" title="Delete trainee" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'">✕</button>
             <div class="chevron" id="chev-${trainee.id}">▾</div>
           </div>
           <div class="trainee-detail" id="detail-${trainee.id}">${buildDetail(trainee,cert)}</div>`;
@@ -1245,6 +1246,31 @@
     window.toggleTrainee=function(uid){const d=document.getElementById(`detail-${uid}`),c=document.getElementById(`chev-${uid}`),h=d.previousElementSibling,o=d.classList.contains("open");d.classList.toggle("open",!o);c.classList.toggle("open",!o);h.classList.toggle("expanded",!o);};
     window.handleSignOff=async function(uid,sk,dk){try{await adminSignOffFn({traineeUid:uid,stepKey:sk,dateKey:dk});const s=await getDoc(doc(db,"certifications",uid));certMap[uid]=s.exists()?s.data():{};const u=await getDoc(doc(db,"users",uid));if(u.data()?.certified){const t=allTrainees.find(t=>t.id===uid);if(t)t.certified=true;showToast(`${t?.name} is Certified!`,"success");}else{showToast("Sign-off recorded.","success");}document.getElementById(`detail-${uid}`).innerHTML=buildDetail(allTrainees.find(t=>t.id===uid),certMap[uid]||{});}catch(e){showToast("Sign-off failed.","error");}};
     window.handleRevoke=async function(uid,sk,dk){if(!confirm("Revoke?"))return;try{await revokeSignOffFn({traineeUid:uid,stepKey:sk,dateKey:dk});const s=await getDoc(doc(db,"certifications",uid));certMap[uid]=s.exists()?s.data():{};const t=allTrainees.find(t=>t.id===uid);if(t)t.certified=false;showToast("Revoked.","info");document.getElementById(`detail-${uid}`).innerHTML=buildDetail(t,certMap[uid]||{});}catch(e){showToast("Failed.","error");}};
+
+    window.deleteTrainee = async function(uid, name) {
+      const typed = prompt(`⚠️ Delete trainee "${name}"?\n\nThis removes their Firestore data and progress. Their Firebase Auth account will remain (delete that manually in Firebase Console → Authentication if needed).\n\nType their name exactly to confirm:`);
+      if (typed === null) return;
+      if (typed.trim() !== name.trim()) { alert("Name didn't match — trainee not deleted."); return; }
+      try {
+        // Delete progress subcollection
+        const progSnap = await getDocs(collection(db,"users",uid,"progress"));
+        await Promise.all(progSnap.docs.map(d=>deleteDoc(d.ref)));
+        // Delete certifications
+        await deleteDoc(doc(db,"certifications",uid)).catch(()=>{});
+        // Delete user doc
+        await deleteDoc(doc(db,"users",uid));
+        // Remove from local list
+        const idx = allTrainees.findIndex(t=>t.id===uid);
+        if (idx !== -1) allTrainees.splice(idx,1);
+        delete progressMap[uid];
+        delete certMap[uid];
+        document.getElementById(`row-${uid}`)?.remove();
+        renderStats();
+        showToast(`${name} removed.`, "success");
+      } catch(e) {
+        showToast("Delete failed: "+e.message, "error");
+      }
+    };
 
     // ── Preview as Trainee (inline modal) ────────────────────────────────────
     window.openPreview = function(moduleId, submoduleId) {
