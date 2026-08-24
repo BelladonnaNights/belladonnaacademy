@@ -122,6 +122,7 @@
       <div class="tabs">
         <button class="tab active" onclick="switchTab('trainees')">Trainees</button>
         <button class="tab" onclick="switchTab('content')">Module Content</button>
+        <button class="tab" onclick="switchTab('preview')">👁 Preview</button>
       </div>
     </div>
 
@@ -167,6 +168,21 @@
           </div>
         </div>
       </div>
+
+      <!-- PREVIEW TAB -->
+      <div class="tab-panel" id="tab-preview" style="height:calc(100vh - 130px);">
+        <div style="background:var(--gold-dim);border-bottom:1px solid var(--gold-border);padding:8px 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+          <span style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);">
+            👁 Trainee preview — select a module in Module Content tab, then come here
+          </span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span id="preview-module-label" style="font-family:var(--cinzel);font-size:10px;color:var(--text3);"></span>
+            <button class="btn btn-ghost btn-sm" onclick="reloadPreview()">↺ Refresh</button>
+          </div>
+        </div>
+        <iframe id="preview-iframe" src="" style="width:100%;height:calc(100% - 41px);border:none;display:block;" allowfullscreen></iframe>
+      </div>
+
     </div>
   </main>
 
@@ -186,6 +202,7 @@
     ];
 
     let allTrainees=[], certMap={}, progressMap={};
+    let currentPreviewModuleId = null; // tracks which module to preview
 
     // All modules data (array, ordered)
     let modulesData = []; // [{id, title, description, content, bannerImage, passingScore, totalQuestions, order, submodules:[], videos:[], questions:[], _open:bool}]
@@ -196,10 +213,31 @@
 
     // ── Tab switch ────────────────────────────────────────────────────────────
     window.switchTab = function(tab) {
-      document.querySelectorAll(".tab").forEach((t,i)=>t.classList.toggle("active",["trainees","content"][i]===tab));
+      document.querySelectorAll(".tab").forEach((t,i)=>t.classList.toggle("active",["trainees","content","preview"][i]===tab));
       document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
       document.getElementById(`tab-${tab}`).classList.add("active");
       if (tab==="content" && modulesData.length===0) loadAllModules();
+      if (tab==="preview") loadPreview();
+    };
+
+    function loadPreview() {
+      const iframe = document.getElementById("preview-iframe");
+      const label = document.getElementById("preview-module-label");
+      const src = currentPreviewModuleId
+        ? `modules.html?id=${currentPreviewModuleId}&preview=1`
+        : "modules.html?preview=1";
+      if (iframe.src !== window.location.origin + "/" + src && iframe.getAttribute("src") !== src) {
+        iframe.src = src;
+      }
+      if (label) {
+        const mod = modulesData.find(m=>m.id===currentPreviewModuleId);
+        label.textContent = mod ? `Previewing: ${mod.title}` : "All modules";
+      }
+    }
+
+    window.reloadPreview = function() {
+      const iframe = document.getElementById("preview-iframe");
+      if (iframe) { const s=iframe.src; iframe.src=""; setTimeout(()=>iframe.src=s,50); }
     };
 
     // ── Init ──────────────────────────────────────────────────────────────────
@@ -270,21 +308,16 @@
           ssData.contentBlocks=(ssData.content||"").split("\n\n").filter(b=>b.trim()).map((b,i)=>({tempId:`ssc${i}`,text:b.trim()}));
           return ssData;
         }));
-        sub.contentBlocks=(sub.content||"").split("\n\n").filter(b=>b.trim()).map((b,i)=>({tempId:`sb${i}`,text:b.trim()}));
-        // Rebuild unified blocks in saved order if available
-        if (sub.blocksOrder && sub.blocksOrder.length) {
-          const tBlocks=sub.contentBlocks.map(b=>({type:"text",tempId:`t${Math.random()}`,text:b.text}));
-          const iBlocks=sub.images.map(img=>({type:"image",tempId:`i${Math.random()}`,url:img.url||"",caption:img.caption||""}));
-          const vBlocks=sub.videos.map(vid=>({type:"video",tempId:`v${Math.random()}`,title:vid.title||"",youtubeId:vid.youtubeId||""}));
-          let ti=0,ii=0,vi=0;
-          sub.blocks=sub.blocksOrder.map(bo=>{
-            if(bo.type==="text")return tBlocks[ti++];
-            if(bo.type==="image")return iBlocks[ii++];
-            if(bo.type==="video")return vBlocks[vi++];
-            return null;
-          }).filter(Boolean);
+        // Restore blocks from JSON (preserves newlines within blocks)
+        if (sub.blocksJson) {
+          try {
+            const parsed = JSON.parse(sub.blocksJson);
+            sub.blocks = parsed.map(b=>({...b, tempId:`${b.type}${Math.random()}`}));
+          } catch(e) { sub.blocks = null; }
         } else {
-          sub.blocks=null; // initSubBlocks will build it from separate arrays on first open
+          // Fallback: build from old separate arrays
+          sub.blocks = null; // initSubBlocks handles this
+          sub.contentBlocks=(sub.content||"").split("\n\n").filter(b=>b.trim()).map((b,i)=>({tempId:`sb${i}`,text:b.trim()}));
         }
         return sub;
       }));
@@ -1021,20 +1054,24 @@
 
         // Serialize unified blocks back into separate arrays for Firestore + trainee page
         const blocks = sub.blocks || [];
-        const textBlocks = blocks.filter(b=>b.type==="text");
-        const imageBlocks = blocks.filter(b=>b.type==="image");
-        const videoBlocks = blocks.filter(b=>b.type==="video");
-        const content = textBlocks.map(b=>b.text||"").filter(t=>t).join("\n\n");
-
-        // Also store the unified blocks order as a separate field so we can restore on reload
-        const blocksOrder = blocks.map((b,i)=>({type:b.type,order:i,ref:b.tempId||""}));
+        // Store blocks as JSON — preserves all content including newlines within blocks
+        const cleanBlocks = blocks.map(b => {
+          if (b.type==="text")  return {type:"text",  text:b.text||""};
+          if (b.type==="image") return {type:"image", url:b.url||"", caption:b.caption||""};
+          if (b.type==="video") return {type:"video", title:b.title||"", youtubeId:b.youtubeId||""};
+          return null;
+        }).filter(Boolean);
+        const blocksJson = JSON.stringify(cleanBlocks);
 
         await setDoc(doc(db,"modules",mod.id,"submodules",sub.id),{
           id:sub.id, order:sub.order||`${mi+1}.${si+1}`, title:sub.title||"",
-          description:sub.description||"", content, bannerImage:sub.bannerImage||"",
-          blocksOrder
+          description:sub.description||"", bannerImage:sub.bannerImage||"",
+          blocksJson
         });
 
+        // Also save separate video/image subcollections for the trainee page (backwards compat)
+        const videoBlocks = cleanBlocks.filter(b=>b.type==="video");
+        const imageBlocks = cleanBlocks.filter(b=>b.type==="image");
         const oldSV=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"videos"));
         await Promise.all(oldSV.docs.map(d=>deleteDoc(d.ref)));
         await Promise.all(videoBlocks.map((v,i)=>setDoc(doc(db,"modules",mod.id,"submodules",sub.id,"videos",`sv_${i+1}`),{id:`sv_${i+1}`,order:i+1,title:v.title||"",youtubeId:v.youtubeId||""})));
@@ -1235,8 +1272,8 @@
 
     // ── Preview as Trainee ────────────────────────────────────────────────────
     window.openPreview = function(moduleId) {
-      // Opens modules.html in a new tab with a preview flag
-      window.open(`modules.html?id=${moduleId}&preview=1`, "_blank");
+      currentPreviewModuleId = moduleId;
+      switchTab("preview");
     };
 
     // ── Auto-save & unsaved changes tracking ──────────────────────────────────
