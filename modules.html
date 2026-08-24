@@ -6,31 +6,26 @@
   <title>Belladonna Training — Modules</title>
   <link rel="stylesheet" href="style.css"/>
   <style>
-    .layout { display:grid; grid-template-columns:280px 1fr; min-height:calc(100vh - 64px); width:100%; }
+    .layout { display:grid; grid-template-columns:260px 1fr; min-height:calc(100vh - 64px); width:100%; }
     @media(max-width:768px){ .layout{grid-template-columns:1fr;} .sidebar{display:none;} .sidebar.open{display:block;position:fixed;inset:0;z-index:300;overflow-y:auto;} }
 
     /* ── Sidebar ── */
     .sidebar { background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; position:sticky; top:64px; height:calc(100vh - 64px); }
-    .sidebar-header { padding:1.25rem 1.25rem 0.75rem; border-bottom:1px solid var(--border); }
-    .sidebar-title { font-family:var(--cinzel); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--text3); margin-bottom:10px; }
-    .overall-prog { margin-bottom:4px; }
-    .overall-prog-label { display:flex; justify-content:space-between; font-family:var(--cinzel); font-size:10px; letter-spacing:.06em; color:var(--text3); margin-bottom:6px; }
-    .overall-prog-num { color:var(--gold); }
+    .sidebar-header { padding:1rem 1.25rem 0.75rem; border-bottom:1px solid var(--border); }
+    .sidebar-title { font-family:var(--cinzel); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--text3); }
 
-    /* Module items */
+    /* Module items — no numbers, no grab handles */
     .mod-item { border-bottom:1px solid var(--border); }
-    .mod-item-header { display:flex; align-items:center; gap:8px; padding:10px 12px; cursor:pointer; transition:background .15s; user-select:none; }
+    .mod-item-header { display:flex; align-items:center; gap:6px; padding:10px 14px; user-select:none; }
     .mod-item-header:hover { background:var(--surface2); }
     .mod-item-header.active { background:var(--surface2); border-left:2px solid var(--gold); }
-    .mod-num { width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--cinzel); font-size:10px; font-weight:600; flex-shrink:0; border:1px solid; }
-    .mod-num.done { background:var(--success-bg); color:var(--success); border-color:var(--success-border); }
-    .mod-num.active { background:var(--gold-dim); color:var(--gold2); border-color:var(--gold-border); }
-    .mod-num.locked { background:transparent; color:var(--text3); border-color:var(--border2); }
-    .mod-label { flex:1; font-family:var(--cinzel); font-size:11px; letter-spacing:.04em; font-weight:600; color:var(--text2); line-height:1.3; }
+    .mod-label { flex:1; font-family:var(--cinzel); font-size:11px; letter-spacing:.04em; font-weight:600; color:var(--text2); line-height:1.3; cursor:pointer; }
+    .mod-label:hover { color:var(--gold); }
     .mod-label.active { color:var(--gold); }
-    .mod-label.locked { color:var(--text3); }
-    .mod-chevron { font-size:10px; color:var(--text3); transition:transform .18s; flex-shrink:0; }
+    .mod-label.locked { color:var(--text3); cursor:default; }
+    .mod-chevron { font-size:10px; color:var(--text3); transition:transform .18s; flex-shrink:0; cursor:pointer; padding:4px; }
     .mod-chevron.open { transform:rotate(180deg); }
+    .mod-done { font-size:11px; color:var(--success); flex-shrink:0; }
 
     /* Sub-sub-module items */
     .subsub-list { display:none; background:var(--bg); }
@@ -61,15 +56,18 @@
     .quiz-label.passed { color:var(--success); }
 
     /* ── Content area ── */
-    .content-area { padding:2rem 2.5rem 4rem; width:100%; }
-    @media(max-width:1100px){ .content-area{padding:1.5rem 1.5rem 4rem;} }
-    @media(max-width:768px){ .content-area{padding:1rem 1rem 3rem;} }
+    .content-area { width:100%; overflow-x:hidden; }
+    .content-inner { padding:2rem 2.5rem 4rem; }
+    @media(max-width:1100px){ .content-inner{padding:1.5rem 1.5rem 4rem;} }
+    @media(max-width:768px){ .content-inner{padding:1rem 1rem 3rem;} }
 
-    /* Banner image - full width hero */
-    .banner-img { width:100%; height:320px; object-fit:cover; border-radius:var(--radius-lg); margin-bottom:1.5rem; border:1px solid var(--border); display:block; }
-    .banner-hero { width:calc(100% + 5rem); margin-left:-2.5rem; margin-top:-2rem; margin-bottom:2rem; height:360px; object-fit:cover; display:block; }
-    @media(max-width:1100px){ .banner-hero{width:calc(100% + 3rem);margin-left:-1.5rem;margin-top:-1.5rem;} }
-    @media(max-width:768px){ .banner-hero{width:calc(100% + 2rem);margin-left:-1rem;margin-top:-1rem;height:220px;} }
+    /* Banner image - true full width across content column */
+    .banner-hero { width:100%; height:380px; object-fit:cover; display:block; margin-bottom:0; }
+    @media(max-width:768px){ .banner-hero{height:220px;} }
+    .banner-hero-wrap { width:100%; overflow:hidden; margin-bottom:2rem; }
+    .content-body { padding:0 2.5rem 4rem; }
+    @media(max-width:1100px){ .content-body{padding:0 1.5rem 4rem;} }
+    @media(max-width:768px){ .content-body{padding:0 1rem 3rem;} }
 
     /* Content blocks */
     .content-block { font-family:var(--serif); font-style:italic; font-size:16px; color:var(--text2); line-height:1.8; margin-bottom:1.25rem; }
@@ -212,23 +210,19 @@
         modDiv.className = "mod-item";
         modDiv.id = `sidebar-mod-${mod.id}`;
 
-        const numClass = passed ? "done" : (locked ? "locked" : "active");
         const labelClass = isActive ? "active" : (locked ? "locked" : "");
 
         modDiv.innerHTML = `
           <div class="mod-item-header ${isActive?"active":""}" id="modheader-${mod.id}">
-            <div class="mod-num ${numClass}">${passed?"✓":idx+1}</div>
+            ${passed ? `<span class="mod-done">✓</span>` : ""}
             <div class="mod-label ${labelClass}"
-              style="cursor:${locked?"default":"pointer"};"
               onclick="${locked?"":"selectModuleIntro('"+mod.id+"')"}"
             >${mod.title||"Module "+(idx+1)}</div>
-            ${!locked ? `<div class="mod-chevron ${isOpen?"open":""}" id="modchev-${mod.id}" onclick="toggleModuleOpen('${mod.id}')" style="cursor:pointer;padding:4px 8px;margin:-4px -8px;">▾</div>` : ""}
+            ${!locked ? `<div class="mod-chevron ${isOpen?"open":""}" id="modchev-${mod.id}" onclick="toggleModuleOpen('${mod.id}')">▾</div>` : ""}
           </div>
           <div class="submod-list ${isOpen?"open":""}" id="submodlist-${mod.id}"></div>`;
 
         container.appendChild(modDiv);
-
-        // Load sub-list content if open
         if (isOpen) loadSubmoduleSidebar(mod.id);
       });
     }
@@ -423,12 +417,17 @@
       const cached = moduleCache[moduleId];
       currentView = "intro";
 
-      let html = "";
+      const viewedSubs = progress[moduleId]?.viewedSubmodules || [];
+      const allSubsVisited = cached.submodules.length === 0 ||
+        cached.submodules.every(s => viewedSubs.includes(s.id));
 
-      // Big hero image - bleeds to edges
+      // Banner goes full width OUTSIDE the padded body
+      let bannerHtml = "";
       if (mod.bannerImage) {
-        html += `<img src="${mod.bannerImage}" class="banner-hero" alt="${mod.title||""}"/>`;
+        bannerHtml = `<div class="banner-hero-wrap"><img src="${mod.bannerImage}" class="banner-hero" alt="${mod.title||""}"/></div>`;
       }
+
+      let html = "";
 
       // Preview button for admins
       if (isPreview) {
@@ -450,13 +449,14 @@
         html += `<p style="font-family:var(--cinzel);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:1rem;font-style:normal;">In this module</p>`;
         html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
         cached.submodules.forEach(sub => {
-          html += `<div onclick="showSubmodule('${moduleId}','${sub.id}')" style="padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:border-color .15s;display:flex;align-items:center;gap:12px;" onmouseover="this.style.borderColor='var(--gold-border)'" onmouseout="this.style.borderColor='var(--border)'">
+          const visited = viewedSubs.includes(sub.id);
+          html += `<div onclick="showSubmodule('${moduleId}','${sub.id}')" style="padding:12px 16px;background:var(--surface);border:1px solid ${visited?"var(--gold-border)":"var(--border)"};border-radius:var(--radius);cursor:pointer;transition:border-color .15s;display:flex;align-items:center;gap:12px;" onmouseover="this.style.borderColor='var(--gold-border)'" onmouseout="this.style.borderColor='${visited?"var(--gold-border)":"var(--border)"}'">
             <div style="font-family:var(--cinzel);font-size:11px;color:var(--gold);font-weight:600;">${sub.order||""}</div>
-            <div>
+            <div style="flex:1;">
               <div style="font-family:var(--cinzel);font-size:13px;font-weight:600;color:var(--text);">${sub.title||""}</div>
               ${sub.description?`<div style="font-size:12px;color:var(--text3);font-family:var(--font);">${sub.description}</div>`:""}
             </div>
-            <div style="margin-left:auto;color:var(--text3);">→</div>
+            ${visited ? `<span style="color:var(--gold);font-size:11px;font-family:var(--cinzel);">✓</span>` : `<div style="margin-left:auto;color:var(--text3);">→</div>`}
           </div>`;
         });
         html += `</div>`;
@@ -471,6 +471,7 @@
         const totalQ = mod.totalQuestions || cached.questions.length;
         const passingScore = mod.passingScore || 4;
         const attempts = progress[moduleId]?.attempts || 0;
+
         if (quizPassed) {
           html += `
             <div style="background:var(--success-bg);border:1px solid var(--success-border);border-radius:var(--radius-lg);padding:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
@@ -479,6 +480,18 @@
                 <div style="font-family:var(--display);font-size:1.4rem;letter-spacing:.06em;color:var(--success);">✓ Passed — ${quizScore}/${totalQ}</div>
               </div>
               <button class="btn btn-ghost btn-sm" onclick="showQuiz('${moduleId}')">Review quiz</button>
+            </div>`;
+        } else if (!allSubsVisited && cached.submodules.length > 0) {
+          // Quiz locked — not all sub-modules visited
+          const remaining = cached.submodules.filter(s=>!viewedSubs.includes(s.id)).length;
+          html += `
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;opacity:.7;">
+              <div>
+                <div style="font-family:var(--cinzel);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Module Quiz</div>
+                <div style="font-family:var(--display);font-size:1.4rem;letter-spacing:.06em;color:var(--text);">${cached.questions.length} Questions</div>
+                <div style="font-size:13px;color:var(--text3);font-family:var(--font);margin-top:4px;">Complete all ${remaining} remaining section${remaining!==1?"s":""} to unlock.</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" disabled style="opacity:.5;cursor:not-allowed;">Locked</button>
             </div>`;
         } else {
           html += `
@@ -493,7 +506,9 @@
         }
       }
 
-      document.getElementById("content-area").innerHTML = html;
+      // Render: banner full width on top, then padded body content
+      const contentArea = document.getElementById("content-area");
+      contentArea.innerHTML = bannerHtml + `<div class="content-body">${html}</div>`;
     }
 
     async function showSubmodule(moduleId, submoduleId) {
@@ -531,8 +546,11 @@
       }
       await loadSubmoduleSidebar(moduleId);
 
+      const bannerHtml = sub.bannerImage
+        ? `<div class="banner-hero-wrap"><img src="${sub.bannerImage}" class="banner-hero" alt="${sub.title||""}"/></div>`
+        : "";
+
       let html = "";
-      if (sub.bannerImage) html += `<img src="${sub.bannerImage}" class="banner-hero" alt="${sub.title||""}"/>`;
 
       // Preview back button for admins
       if (isPreview) {
@@ -578,7 +596,7 @@
       }
       html += `</div>`;
 
-      document.getElementById("content-area").innerHTML = html;
+      document.getElementById("content-area").innerHTML = bannerHtml + `<div class="content-body">${html}</div>`;
       setupVideoPlayers();
     }
 
@@ -606,9 +624,11 @@
       }
       await loadSubmoduleSidebar(moduleId);
 
-      let html = "";
-      if (ss.bannerImage) html += `<img src="${ss.bannerImage}" class="banner-hero" alt="${ss.title||""}"/>`;
+      const bannerHtml2 = ss.bannerImage
+        ? `<div class="banner-hero-wrap"><img src="${ss.bannerImage}" class="banner-hero" alt="${ss.title||""}"/></div>`
+        : "";
 
+      let html = "";
       if (isPreview) html += `<div style="margin-bottom:1rem;"><a href="admin.html" class="btn btn-ghost btn-sm">← Back to admin</a></div>`;
 
       html += `<p style="font-family:var(--cinzel);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;font-style:normal;">${ss.order||""}</p>`;
@@ -645,7 +665,7 @@
       }
       html += `</div>`;
 
-      document.getElementById("content-area").innerHTML = html;
+      document.getElementById("content-area").innerHTML = bannerHtml2 + `<div class="content-body">${html}</div>`;
       setupVideoPlayers();
     };
       if (!moduleCache[moduleId]) await fetchModuleData(moduleId);
@@ -656,11 +676,7 @@
       await loadSubmoduleSidebar(moduleId);
       let html = `<h2 class="gold-text" style="margin-bottom:1.5rem;">Videos</h2>`;
       html += renderVideosSection(cached.videos, moduleId, null);
-      document.getElementById("content-area").innerHTML = html;
-      setupVideoPlayers();
-    };
-
-    function renderContentBlock(text) {
+      document.getElementById("content-area").innerHTML = `<div class="content-body">${html}</div>`;
       // Check if it's an image markdown: ![caption](url)
       const imgMatch = text.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
       if (imgMatch) {
@@ -784,7 +800,7 @@
       </div>`;
       html += `<div id="quiz-result" style="display:none;"></div>`;
 
-      document.getElementById("content-area").innerHTML = html;
+      document.getElementById("content-area").innerHTML = `<div class="content-body">${html}</div>`;
     };
 
     window.selectAnswer = function(qi, oi, total) {
