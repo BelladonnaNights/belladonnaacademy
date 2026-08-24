@@ -6,11 +6,13 @@
   <title>Belladonna Training — Modules</title>
   <link rel="stylesheet" href="style.css"/>
   <style>
-    .layout { display:grid; grid-template-columns:260px 1fr; min-height:calc(100vh - 64px); width:100%; }
-    @media(max-width:768px){ .layout{grid-template-columns:1fr;} .sidebar{display:none;} .sidebar.open{display:block;position:fixed;inset:0;z-index:300;overflow-y:auto;} }
+    /* Full viewport layout below nav */
+    #app { display:flex; flex-direction:column; }
+    .layout { display:flex; flex:1; width:100%; }
+    @media(max-width:768px){ .sidebar{display:none !important;} }
 
     /* ── Sidebar ── */
-    .sidebar { background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; position:sticky; top:64px; height:calc(100vh - 64px); }
+    .sidebar { background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; flex-shrink:0; width:260px; min-width:260px; height:calc(100vh - 120px); position:sticky; top:0; align-self:flex-start; }
     .sidebar-header { padding:1rem 1.25rem 0.75rem; border-bottom:1px solid var(--border); }
     .sidebar-title { font-family:var(--cinzel); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--text3); }
 
@@ -288,20 +290,7 @@
         }
       });
 
-      // Quiz item
-      const quizPassed = progress[moduleId]?.status === "passed";
-      const hasQuestions = (cached.questions||[]).length > 0;
-      if (hasQuestions) {
-        const quizItem = document.createElement("div");
-        quizItem.className = `quiz-item ${currentView==="quiz"&&currentModuleId===moduleId?"active":""}`;
-        quizItem.onclick = () => showQuiz(moduleId);
-        quizItem.innerHTML = `
-          <div class="quiz-dot ${quizPassed?"passed":""}"></div>
-          <div class="quiz-label ${quizPassed?"passed":""}">
-            ${quizPassed?"✓ Quiz Passed":"Module Quiz"}
-          </div>`;
-        list.appendChild(quizItem);
-      }
+      // No per-module quiz in sidebar — final quiz is a separate module
     }
 
     // ── Update sidebar active state without full re-render ───────────────────
@@ -464,47 +453,7 @@
         html += renderVideosSection(cached.videos, moduleId, null);
       }
 
-      if (cached.questions.length > 0) {
-        html += `<div class="ornament" style="margin-top:2rem;"><div class="ornament-line"></div><div class="ornament-diamond"></div><div class="ornament-line"></div></div>`;
-        const quizPassed = progress[moduleId]?.status === "passed";
-        const quizScore = progress[moduleId]?.quizScore;
-        const totalQ = mod.totalQuestions || cached.questions.length;
-        const passingScore = mod.passingScore || 4;
-        const attempts = progress[moduleId]?.attempts || 0;
-
-        if (quizPassed) {
-          html += `
-            <div style="background:var(--success-bg);border:1px solid var(--success-border);border-radius:var(--radius-lg);padding:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
-              <div>
-                <div style="font-family:var(--cinzel);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--success);margin-bottom:4px;">Module Quiz</div>
-                <div style="font-family:var(--display);font-size:1.4rem;letter-spacing:.06em;color:var(--success);">✓ Passed — ${quizScore}/${totalQ}</div>
-              </div>
-              <button class="btn btn-ghost btn-sm" onclick="showQuiz('${moduleId}')">Review quiz</button>
-            </div>`;
-        } else if (!allSubsVisited && cached.submodules.length > 0) {
-          // Quiz locked — not all sub-modules visited
-          const remaining = cached.submodules.filter(s=>!viewedSubs.includes(s.id)).length;
-          html += `
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;opacity:.7;">
-              <div>
-                <div style="font-family:var(--cinzel);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Module Quiz</div>
-                <div style="font-family:var(--display);font-size:1.4rem;letter-spacing:.06em;color:var(--text);">${cached.questions.length} Questions</div>
-                <div style="font-size:13px;color:var(--text3);font-family:var(--font);margin-top:4px;">Complete all ${remaining} remaining section${remaining!==1?"s":""} to unlock.</div>
-              </div>
-              <button class="btn btn-ghost btn-sm" disabled style="opacity:.5;cursor:not-allowed;">Locked</button>
-            </div>`;
-        } else {
-          html += `
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
-              <div>
-                <div style="font-family:var(--cinzel);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Module Quiz</div>
-                <div style="font-family:var(--display);font-size:1.4rem;letter-spacing:.06em;color:var(--text);">${cached.questions.length} Questions</div>
-                <div style="font-size:13px;color:var(--text3);font-family:var(--font);margin-top:4px;">Score ${passingScore}/${totalQ} or higher to pass${attempts > 0 ? ` · Attempt ${attempts + 1}` : ""}.</div>
-              </div>
-              <button class="btn btn-primary" onclick="showQuiz('${moduleId}')">${attempts > 0 ? "Retake Quiz" : "Take Quiz"} →</button>
-            </div>`;
-        }
-      }
+      // Quiz is at the end of all modules — not shown per-module
 
       // Render: banner full width on top, then padded body content
       const contentArea = document.getElementById("content-area");
