@@ -645,6 +645,8 @@
       document.getElementById("content-area").innerHTML = bannerHtml2 + `<div class="content-body">${html}</div>`;
       setupVideoPlayers();
     };
+
+    window.showVideos = async function(moduleId) {
       if (!moduleCache[moduleId]) await fetchModuleData(moduleId);
       const cached = moduleCache[moduleId];
       currentSubmoduleId = "videos";
@@ -654,6 +656,10 @@
       let html = `<h2 class="gold-text" style="margin-bottom:1.5rem;">Videos</h2>`;
       html += renderVideosSection(cached.videos, moduleId, null);
       document.getElementById("content-area").innerHTML = `<div class="content-body">${html}</div>`;
+      setupVideoPlayers();
+    };
+
+    function renderContentBlock(text) {
       // Check if it's an image markdown: ![caption](url)
       const imgMatch = text.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
       if (imgMatch) {
