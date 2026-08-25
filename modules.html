@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Belladonna Training — Modules</title>
+  <title>Belladonna Host Academy</title>
   <link rel="stylesheet" href="style.css"/>
   <style>
     /* Full viewport layout below nav */
@@ -363,11 +363,14 @@
 
     // ── Fetch module data ─────────────────────────────────────────────────────
     async function fetchModuleData(moduleId) {
-      const [subSnap, vidSnap, queSnap] = await Promise.all([
-        getDocs(query(collection(db,"modules",moduleId,"submodules"),orderBy("order"))).catch(()=>({docs:[]})),
-        getDocs(query(collection(db,"modules",moduleId,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
-        getDocs(query(collection(db,"modules",moduleId,"questions"),orderBy("order"))).catch(()=>({docs:[]})),
-      ]);
+      // Set a placeholder immediately so we don't double-fetch
+      moduleCache[moduleId] = { submodules:[], videos:[], questions:[] };
+      try {
+        const [subSnap, vidSnap, queSnap] = await Promise.all([
+          getDocs(query(collection(db,"modules",moduleId,"submodules"),orderBy("order"))).catch(()=>({docs:[]})),
+          getDocs(query(collection(db,"modules",moduleId,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
+          getDocs(query(collection(db,"modules",moduleId,"questions"),orderBy("order"))).catch(()=>({docs:[]})),
+        ]);
 
       const submodules = await Promise.all(subSnap.docs.map(async d => {
         const sub = {id:d.id,...d.data()};
@@ -393,17 +396,36 @@
       }));
 
       moduleCache[moduleId] = {
-        submodules,
-        videos: vidSnap.docs.map(d=>({id:d.id,...d.data()})),
-        questions: queSnap.docs.map(d=>({id:d.id,...d.data()})),
-      };
+          submodules,
+          videos: vidSnap.docs.map(d=>({id:d.id,...d.data()})),
+          questions: queSnap.docs.map(d=>({id:d.id,...d.data()})),
+        };
+      } catch(e) {
+        console.error("fetchModuleData error:", e);
+        // moduleCache already has the empty placeholder set above, so UI won't hang
+        throw e; // re-throw so showModuleIntro can catch it
+      }
     }
 
     // ── Content rendering ─────────────────────────────────────────────────────
     async function showModuleIntro(moduleId) {
-      if (!moduleCache[moduleId]) await fetchModuleData(moduleId);
+      // Show spinner in content area while loading
+      const contentArea = document.getElementById("content-area");
+      contentArea.innerHTML = `<div class="content-body"><div style="display:flex;justify-content:center;padding:4rem;"><div class="spinner"></div></div></div>`;
+
+      try {
+        if (!moduleCache[moduleId]) await fetchModuleData(moduleId);
+      } catch(e) {
+        contentArea.innerHTML = `<div class="content-body"><p style="color:var(--danger);font-family:var(--font);">Error loading module — please refresh and try again.<br><small>${e.message}</small></p></div>`;
+        return;
+      }
+
       const mod = allModules.find(m=>m.id===moduleId);
       const cached = moduleCache[moduleId];
+      if (!mod || !cached) {
+        contentArea.innerHTML = `<div class="content-body"><p style="color:var(--text3);font-family:var(--serif);font-style:italic;">Module not found.</p></div>`;
+        return;
+      }
       currentView = "intro";
 
       const viewedSubs = progress[moduleId]?.viewedSubmodules || [];
@@ -461,10 +483,17 @@
     }
 
     async function showSubmodule(moduleId, submoduleId) {
-      if (!moduleCache[moduleId]) await fetchModuleData(moduleId);
+      const contentArea = document.getElementById("content-area");
+      contentArea.innerHTML = `<div class="content-body"><div style="display:flex;justify-content:center;padding:4rem;"><div class="spinner"></div></div></div>`;
+      try {
+        if (!moduleCache[moduleId]) await fetchModuleData(moduleId);
+      } catch(e) {
+        contentArea.innerHTML = `<div class="content-body"><p style="color:var(--danger);font-family:var(--font);">Error loading — please refresh.<br><small>${e.message}</small></p></div>`;
+        return;
+      }
       const cached = moduleCache[moduleId];
       const sub = cached.submodules.find(s=>s.id===submoduleId);
-      if (!sub) return;
+      if (!sub) { contentArea.innerHTML = `<div class="content-body"><p style="color:var(--text3);">Section not found.</p></div>`; return; }
 
       currentModuleId = moduleId;
       currentSubmoduleId = submoduleId;
