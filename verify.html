@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Belladonna Host Academy — Verify a Host</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .verify-wrap { min-height:100vh; background:var(--bg); }
+    .verify-hero { background:var(--surface); border-bottom:1px solid var(--border); padding:3rem 1.5rem 2.5rem; text-align:center; }
+    .verify-body { max-width:640px; margin:0 auto; padding:2.5rem 1.5rem 4rem; }
+
+    /* Search */
+    .search-row { display:flex; gap:8px; margin-top:1.5rem; }
+    .search-row input { flex:1; }
+    .search-row button { flex-shrink:0; }
+
+    /* Result card */
+    .host-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; margin-top:2rem; }
+    .host-card-top { display:flex; align-items:center; gap:1.5rem; padding:1.5rem; }
+    .host-photo { width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--border2); flex-shrink:0; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-family:var(--cinzel); font-size:24px; color:var(--text3); }
+    .host-photo img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+    .host-info { flex:1; min-width:0; }
+    .host-name { font-family:var(--cinzel); font-size:18px; font-weight:600; letter-spacing:.04em; color:var(--text); margin-bottom:4px; }
+    .host-dj { font-family:var(--serif); font-style:italic; font-size:15px; color:var(--text2); margin-bottom:8px; }
+    .host-card-bottom { padding:1rem 1.5rem; background:var(--surface2); border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+
+    /* Tier badge */
+    .tier-badge { display:inline-flex; align-items:center; gap:8px; padding:6px 14px; border-radius:99px; font-family:var(--cinzel); font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; border:1px solid; }
+    .tier-bronze { background:#1a1208; border-color:#cd7f32; color:#cd7f32; }
+    .tier-silver { background:#111418; border-color:#a8b2be; color:#a8b2be; }
+    .tier-gold   { background:#1a1508; border-color:#c9a84c; color:#c9a84c; }
+    .tier-none   { background:var(--surface2); border-color:var(--border2); color:var(--text3); }
+    .tier-check-bronze { color:#cd7f32; font-size:16px; }
+    .tier-check-silver { color:#a8b2be; font-size:16px; }
+    .tier-check-gold   { color:#c9a84c; font-size:16px; }
+
+    /* States */
+    .not-found { text-align:center; padding:3rem 1rem; }
+    .not-found p { font-family:var(--serif); font-style:italic; color:var(--text3); margin-top:0.75rem; }
+    .searching { text-align:center; padding:3rem 1rem; }
+  </style>
+</head>
+<body>
+  <div class="verify-wrap">
+    <!-- Header -->
+    <div class="verify-hero">
+      <a href="dashboard.html" style="text-decoration:none;">
+        <div style="font-family:var(--display);font-size:2rem;letter-spacing:.1em;background:linear-gradient(135deg,#c9a84c,#f5df90,#c9a84c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px;">BELLADONNA</div>
+        <div style="font-family:var(--cinzel);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);">Host Academy</div>
+      </a>
+      <div class="ornament" style="margin:1.5rem auto;max-width:200px;"><div class="ornament-line"></div><div class="ornament-diamond"></div><div class="ornament-line"></div></div>
+      <h1 style="font-family:var(--cinzel);font-size:1.4rem;letter-spacing:.08em;color:var(--text);margin-bottom:8px;">Host Verification</h1>
+      <p style="font-family:var(--serif);font-style:italic;color:var(--text2);font-size:15px;">Look up a certified Belladonna host by name or DJ name.</p>
+    </div>
+
+    <div class="verify-body">
+      <!-- Search -->
+      <div>
+        <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);">Name or DJ name</label>
+        <div class="search-row">
+          <input type="text" id="search-input" placeholder="e.g. Jordan Smith or DJ Midnight" autocomplete="off"/>
+          <button class="btn btn-primary" onclick="doSearch()">Look up</button>
+        </div>
+        <p style="font-size:12px;color:var(--text3);font-family:var(--font);margin-top:8px;font-style:normal;">Search is not case-sensitive.</p>
+      </div>
+
+      <!-- Result area -->
+      <div id="result-area"></div>
+
+      <!-- Tier legend -->
+      <div style="margin-top:3rem;border-top:1px solid var(--border);padding-top:1.5rem;">
+        <p style="font-family:var(--cinzel);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:1rem;">Certification Tiers</p>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="tier-badge tier-gold">✦ Audio Alchemist</span>
+            <span style="font-size:13px;color:var(--text3);font-family:var(--font);">Highest tier — advanced certified host</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="tier-badge tier-silver">✦ Verified Host</span>
+            <span style="font-size:13px;color:var(--text3);font-family:var(--font);">Intermediate — verified and experienced</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="tier-badge tier-bronze">✦ Certified Host</span>
+            <span style="font-size:13px;color:var(--text3);font-family:var(--font);">Entry level — completed all training</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase-init.js";
+    import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const TIERS = {
+      "audio_alchemist": { label:"Audio Alchemist", cls:"tier-gold",   icon:"✦" },
+      "verified_host":   { label:"Verified Host",   cls:"tier-silver", icon:"✦" },
+      "certified_host":  { label:"Certified Host",  cls:"tier-bronze", icon:"✦" },
+    };
+
+    window.doSearch = async function() {
+      const q = document.getElementById("search-input").value.trim().toLowerCase();
+      const area = document.getElementById("result-area");
+      if (!q) return;
+
+      area.innerHTML = `<div class="searching"><div class="spinner" style="margin:0 auto;"></div><p style="margin-top:1rem;font-family:var(--serif);font-style:italic;color:var(--text3);">Searching...</p></div>`;
+
+      try {
+        const snap = await getDocs(collection(db,"users"));
+        const results = [];
+        snap.forEach(d => {
+          const u = d.data();
+          if (u.role === "admin") return;
+          if (!u.certified && !u.tier) return; // only show certified hosts
+          const nameMatch = (u.name||"").toLowerCase().includes(q);
+          const djMatch = (u.djName||"").toLowerCase().includes(q);
+          if (nameMatch || djMatch) results.push({id:d.id,...u});
+        });
+
+        if (!results.length) {
+          area.innerHTML = `
+            <div class="not-found">
+              <div style="font-size:2rem;color:var(--text3);">✦</div>
+              <p>No certified host found matching "<strong style="color:var(--text);">${q}</strong>".</p>
+              <p style="margin-top:6px;font-size:13px;">If you believe this is an error, contact Belladonna directly.</p>
+            </div>`;
+          return;
+        }
+
+        area.innerHTML = results.map(u => buildCard(u)).join("");
+      } catch(e) {
+        area.innerHTML = `<p style="color:var(--danger);margin-top:1.5rem;font-family:var(--font);">Error searching — please try again.</p>`;
+      }
+    };
+
+    function buildCard(u) {
+      const tier = TIERS[u.tier] || TIERS["certified_host"];
+      const certDate = u.certifiedAt
+        ? new Date(u.certifiedAt.seconds*1000).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})
+        : "";
+      const initials = (u.name||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+      const photoHtml = u.photoUrl
+        ? `<div class="host-photo"><img src="${u.photoUrl}" alt="${u.name||""}"/></div>`
+        : `<div class="host-photo">${initials}</div>`;
+
+      return `
+        <div class="host-card">
+          <div class="host-card-top">
+            ${photoHtml}
+            <div class="host-info">
+              <div class="host-name">${u.name||"Unknown"}</div>
+              ${u.djName ? `<div class="host-dj">${u.djName}</div>` : ""}
+              <span class="tier-badge ${tier.cls}">${tier.icon} ${tier.label}</span>
+            </div>
+          </div>
+          <div class="host-card-bottom">
+            <span style="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--success);">✓ Verified by Belladonna Host Academy</span>
+            ${certDate ? `<span style="font-size:12px;color:var(--text3);font-family:var(--font);">Certified ${certDate}</span>` : ""}
+          </div>
+        </div>`;
+    }
+
+    // Allow Enter key to search
+    document.getElementById("search-input").addEventListener("keydown", e => {
+      if (e.key === "Enter") doSearch();
+    });
+  </script>
+</body>
+</html>
