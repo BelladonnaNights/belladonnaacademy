@@ -88,7 +88,7 @@ export function renderNav(profile, showAdmin = false) {
           <img src="logo.png" class="nav-logo-img" onerror="this.style.display='none'" alt=""/>
           <div class="nav-title">BELLADONNA <span>ACADEMY</span></div>
           <span class="nav-divider">|</span>
-          <span class="nav-subtitle">Host Academy</span>
+          <span class="nav-subtitle">Host Certification</span>
         </div>
       </a>
       <div class="nav-right">
