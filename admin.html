@@ -1184,8 +1184,8 @@
               <div style="font-family:var(--cinzel);font-size:10px;color:var(--text3);text-align:right;margin-bottom:4px;">${passed}/${MODULES_COUNT}</div>
               <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
             </div>
-            <div style="display:flex;gap:3px;flex-shrink:0;padding:0 12px;">${dots}</div>
-            <button onclick="event.stopPropagation();deleteTrainee('${trainee.id}','${trainee.name?.replace(/'/g,"\\'")||""}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:4px 6px;border-radius:4px;flex-shrink:0;transition:color .15s;" title="Delete trainee" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'">✕</button>
+            ${trainee.tier ? `<div style="font-size:11px;padding:0 8px;flex-shrink:0;">${{certified_host:"🥉",verified_host:"🥈",audio_alchemist:"🥇"}[trainee.tier]||""}</div>` : ""}
+            <button onclick="event.stopPropagation();deleteTrainee('${trainee.id}','${(trainee.name||"").replace(/'/g,"\\'")}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:4px 6px;border-radius:4px;flex-shrink:0;" title="Delete trainee" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'">✕</button>
             <div class="chevron" id="chev-${trainee.id}">▾</div>
           </div>
           <div class="trainee-detail" id="detail-${trainee.id}">${buildDetail(trainee,cert)}</div>`;
@@ -1212,7 +1212,41 @@
           ${trainee.tempPassword ? `<p style="font-size:11px;color:var(--text3);font-family:var(--font);font-style:normal;margin-top:8px;">If they changed their own password, this won't reflect it.</p>` : ""}
         </div>`;
 
-      return `<div class="detail-grid"><div class="detail-card"><div class="detail-card-label">Quiz Progress</div>${qr}</div>${pwCard}${SIGNOFF_STEPS.map(step=>{const done=cert[step.key],dv=cert[step.dateKey];const ds=dv?new Date(dv.seconds*1000).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"";return `<div class="detail-card"><div class="detail-card-label">${step.label}</div>${done?`<div class="badge badge-pass" style="margin-bottom:10px;display:block;">✓${ds?" · "+ds:""}</div><button class="btn btn-ghost btn-sm" onclick="handleRevoke('${trainee.id}','${step.key}','${step.dateKey}')">Revoke</button>`:`<div class="badge badge-locked" style="margin-bottom:10px;display:block;">Pending</div><button class="btn btn-primary btn-sm" onclick="handleSignOff('${trainee.id}','${step.key}','${step.dateKey}')">Sign Off ✓</button>`}</div>`;}).join("")}</div>`;
+      const tierOptions = [
+        {val:"",label:"No tier yet"},
+        {val:"certified_host",label:"🥉 Certified Host"},
+        {val:"verified_host",label:"🥈 Verified Host"},
+        {val:"audio_alchemist",label:"🥇 Audio Alchemist"},
+      ];
+      const currentTier = trainee.tier||"";
+      const TIER_LABELS = {certified_host:"🥉 Certified Host",verified_host:"🥈 Verified Host",audio_alchemist:"🥇 Audio Alchemist"};
+      const profileCard = `
+        <div class="detail-card">
+          <div class="detail-card-label">Profile</div>
+          <div style="margin-bottom:8px;">
+            <label style="font-size:11px;color:var(--text3);font-family:var(--cinzel);letter-spacing:.06em;">DJ / Stage Name</label>
+            <input type="text" id="djname-${trainee.id}" value="${trainee.djName||""}"
+              placeholder="DJ Midnight"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;width:100%;margin-top:4px;"/>
+          </div>
+          <div style="margin-bottom:8px;">
+            <label style="font-size:11px;color:var(--text3);font-family:var(--cinzel);letter-spacing:.06em;">Photo URL (for public lookup)</label>
+            <input type="text" id="photo-${trainee.id}" value="${trainee.photoUrl||""}"
+              placeholder="https://..."
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;width:100%;margin-top:4px;"/>
+          </div>
+          <div style="margin-bottom:10px;">
+            <label style="font-size:11px;color:var(--text3);font-family:var(--cinzel);letter-spacing:.06em;">Certification Tier</label>
+            <select id="tier-${trainee.id}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;width:100%;margin-top:4px;">
+              ${tierOptions.map(o=>`<option value="${o.val}" ${currentTier===o.val?"selected":""}>${o.label}</option>`).join("")}
+            </select>
+          </div>
+          ${currentTier?`<div class="badge badge-pass" style="margin-bottom:10px;display:inline-block;">${TIER_LABELS[currentTier]||currentTier}</div><br/>`:""}
+          <button class="btn btn-primary btn-sm" onclick="saveProfile('${trainee.id}')">Save Profile</button>
+        </div>`;
+
+      return `<div class="detail-grid"><div class="detail-card"><div class="detail-card-label">Quiz Progress</div>${qr}</div>${pwCard}${profileCard}${SIGNOFF_STEPS.map(step=>{const done=cert[step.key],dv=cert[step.dateKey];const ds=dv?new Date(dv.seconds*1000).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"";return `<div class="detail-card"><div class="detail-card-label">${step.label}</div>${done?`<div class="badge badge-pass" style="margin-bottom:10px;display:block;">✓${ds?" · "+ds:""}</div><button class="btn btn-ghost btn-sm" onclick="handleRevoke('${trainee.id}','${step.key}','${step.dateKey}')">Revoke</button>`:`<div class="badge badge-locked" style="margin-bottom:10px;display:block;">Pending</div><button class="btn btn-primary btn-sm" onclick="handleSignOff('${trainee.id}','${step.key}','${step.dateKey}')">Sign Off ✓</button>`}</div>`;}).join("")}</div>`;
     }
 
     window.togglePw = function(uid, pw) {
@@ -1247,32 +1281,36 @@
     window.handleSignOff=async function(uid,sk,dk){try{await adminSignOffFn({traineeUid:uid,stepKey:sk,dateKey:dk});const s=await getDoc(doc(db,"certifications",uid));certMap[uid]=s.exists()?s.data():{};const u=await getDoc(doc(db,"users",uid));if(u.data()?.certified){const t=allTrainees.find(t=>t.id===uid);if(t)t.certified=true;showToast(`${t?.name} is Certified!`,"success");}else{showToast("Sign-off recorded.","success");}document.getElementById(`detail-${uid}`).innerHTML=buildDetail(allTrainees.find(t=>t.id===uid),certMap[uid]||{});}catch(e){showToast("Sign-off failed.","error");}};
     window.handleRevoke=async function(uid,sk,dk){if(!confirm("Revoke?"))return;try{await revokeSignOffFn({traineeUid:uid,stepKey:sk,dateKey:dk});const s=await getDoc(doc(db,"certifications",uid));certMap[uid]=s.exists()?s.data():{};const t=allTrainees.find(t=>t.id===uid);if(t)t.certified=false;showToast("Revoked.","info");document.getElementById(`detail-${uid}`).innerHTML=buildDetail(t,certMap[uid]||{});}catch(e){showToast("Failed.","error");}};
 
+    window.saveProfile = async function(uid) {
+      const djName = document.getElementById(`djname-${uid}`)?.value.trim()||"";
+      const photoUrl = document.getElementById(`photo-${uid}`)?.value.trim()||"";
+      const tier = document.getElementById(`tier-${uid}`)?.value||"";
+      try {
+        await setDoc(doc(db,"users",uid),{djName,photoUrl,tier},{merge:true});
+        const t = allTrainees.find(t=>t.id===uid);
+        if (t) { t.djName=djName; t.photoUrl=photoUrl; t.tier=tier; }
+        showToast("Profile saved.","success");
+        document.getElementById(`detail-${uid}`).innerHTML=buildDetail(t,certMap[uid]||{});
+      } catch(e) { showToast("Save failed: "+e.message,"error"); }
+    };
+
     window.deleteTrainee = async function(uid, name) {
-      const typed = prompt(`⚠️ Delete trainee "${name}"?\n\nThis removes their Firestore data and progress. Their Firebase Auth account will remain (delete that manually in Firebase Console → Authentication if needed).\n\nType their name exactly to confirm:`);
+      const typed = prompt(`⚠️ Delete trainee "${name}"?\n\nThis removes their Firestore data. Their Firebase Auth account must be deleted manually in Firebase Console → Authentication.\n\nType their name exactly to confirm:`);
       if (typed === null) return;
       if (typed.trim() !== name.trim()) { alert("Name didn't match — trainee not deleted."); return; }
       try {
-        // Delete progress subcollection
         const progSnap = await getDocs(collection(db,"users",uid,"progress"));
         await Promise.all(progSnap.docs.map(d=>deleteDoc(d.ref)));
-        // Delete certifications
         await deleteDoc(doc(db,"certifications",uid)).catch(()=>{});
-        // Delete user doc
         await deleteDoc(doc(db,"users",uid));
-        // Remove from local list
         const idx = allTrainees.findIndex(t=>t.id===uid);
         if (idx !== -1) allTrainees.splice(idx,1);
-        delete progressMap[uid];
-        delete certMap[uid];
+        delete progressMap[uid]; delete certMap[uid];
         document.getElementById(`row-${uid}`)?.remove();
         renderStats();
-        showToast(`${name} removed.`, "success");
-      } catch(e) {
-        showToast("Delete failed: "+e.message, "error");
-      }
+        showToast(`${name} removed.`,"success");
+      } catch(e) { showToast("Delete failed: "+e.message,"error"); }
     };
-
-    // ── Preview as Trainee (inline modal) ────────────────────────────────────
     window.openPreview = function(moduleId, submoduleId) {
       const modal = document.getElementById("preview-modal");
       const container = document.getElementById("preview-content");
