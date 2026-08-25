@@ -86,9 +86,9 @@ export function renderNav(profile, showAdmin = false) {
       <a href="dashboard.html" class="nav-brand-link">
         <div class="nav-left">
           <img src="logo.png" class="nav-logo-img" onerror="this.style.display='none'" alt=""/>
-          <div class="nav-title">BELLADONNA <span>TRAINING</span></div>
+          <div class="nav-title">BELLADONNA <span>ACADEMY</span></div>
           <span class="nav-divider">|</span>
-          <span class="nav-subtitle">Host Certification</span>
+          <span class="nav-subtitle">Host Academy</span>
         </div>
       </a>
       <div class="nav-right">
