@@ -144,10 +144,8 @@ export function getModuleStatus(modules, progress, idx) {
   if (p?.status === "passed") return "passed";
   if (p?.status === "failed") return "failed";
   if (p?.status === "in_progress") return "in_progress";
-  if (idx === 0) return "available";
-  const prevId = modules[idx - 1]?.id;
-  if (prevId && progress[prevId]?.status === "passed") return "available";
-  return "locked";
+  // All modules always available — no sequential locking
+  return "available";
 }
 
 export { doc, getDoc, setDoc, getDocs, collection, query, orderBy, serverTimestamp, arrayUnion, onAuthStateChanged, createUserWithEmailAndPassword };
