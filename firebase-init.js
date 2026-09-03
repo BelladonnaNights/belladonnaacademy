@@ -93,7 +93,7 @@ export function renderNav(profile, showAdmin = false) {
       </a>
       <div class="nav-right">
         ${showAdmin ? `<a href="admin.html" class="nav-btn nav-btn-ghost">Admin</a>` : ""}
-        <span class="nav-name">${name}</span>
+        <a href="profile.html" class="nav-btn nav-btn-ghost" style="font-size:9px;">${name||"Profile"}</a>
         <button class="nav-btn nav-btn-ghost" onclick="window._logout()">Sign Out</button>
       </div>
     </nav>`;
