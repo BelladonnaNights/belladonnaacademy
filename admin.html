@@ -170,19 +170,40 @@
         <!-- Content sidebar -->
         <div class="content-sidebar" id="content-sidebar">
           <div class="cs-header" style="flex-direction:column;align-items:stretch;gap:8px;padding:10px 12px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-              <span class="cs-label">Course</span>
-              <button class="cs-add-btn" title="Add new module" onclick="addModule()">+</button>
+            <div>
+              <span class="cs-label" style="display:block;margin-bottom:6px;">Course</span>
+              <select id="course-selector" onchange="selectCourse(this.value)"
+                style="background:var(--surface2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:6px 10px;color:var(--gold2);font-family:var(--cinzel);font-size:10px;letter-spacing:.06em;width:100%;cursor:pointer;">
+                <option value="academy">Belladonna Academy</option>
+                <option value="certification">Host Certification</option>
+                <option value="trivia">Trivia Time Transfer</option>
+                <option value="__add__">+ Add new course...</option>
+              </select>
             </div>
-            <select id="course-selector" onchange="selectCourse(this.value)"
-              style="background:var(--surface2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:6px 10px;color:var(--gold2);font-family:var(--cinzel);font-size:10px;letter-spacing:.06em;width:100%;cursor:pointer;">
-              <option value="academy">Belladonna Academy</option>
-              <option value="certification">Host Certification</option>
-              <option value="trivia">Trivia Time Transfer</option>
-            </select>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px;">
               <span class="cs-label">Modules</span>
+              <button class="cs-add-btn" title="Add module or quiz" onclick="showAddModuleMenu()">+</button>
             </div>
+          </div>
+
+          <!-- Add module menu popup -->
+          <div id="add-module-menu" style="display:none;position:absolute;z-index:200;background:var(--surface);border:1px solid var(--gold-border);border-radius:var(--radius-lg);padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);min-width:200px;">
+            <div style="font-family:var(--cinzel);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Add to this course</div>
+            <button onclick="addModuleOfType('regular')" style="display:flex;align-items:center;gap:10px;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;cursor:pointer;margin-bottom:8px;text-align:left;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--gold-border)'" onmouseout="this.style.borderColor='var(--border)'">
+              <span style="font-size:18px;">📄</span>
+              <div>
+                <div style="font-family:var(--cinzel);font-size:12px;font-weight:600;color:var(--text);letter-spacing:.04em;">Add Module</div>
+                <div style="font-size:11px;color:var(--text3);font-family:var(--font);margin-top:2px;">Content, videos, sub-modules</div>
+              </div>
+            </button>
+            <button onclick="addModuleOfType('quiz')" style="display:flex;align-items:center;gap:10px;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;cursor:pointer;text-align:left;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--gold-border)'" onmouseout="this.style.borderColor='var(--border)'">
+              <span style="font-size:18px;">📝</span>
+              <div>
+                <div style="font-family:var(--cinzel);font-size:12px;font-weight:600;color:var(--text);letter-spacing:.04em;">Add Quiz</div>
+                <div style="font-size:11px;color:var(--text3);font-family:var(--font);margin-top:2px;">30 random questions from bank</div>
+              </div>
+            </button>
+            <button onclick="document.getElementById('add-module-menu').style.display='none'" style="margin-top:10px;width:100%;background:none;border:none;cursor:pointer;font-family:var(--cinzel);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:4px;">Cancel</button>
           </div>
           <div id="cs-module-list"></div>
         </div>
@@ -327,6 +348,30 @@
 
     // ── Load all modules ──────────────────────────────────────────────────────
     window.selectCourse = function(courseId) {
+      if (courseId === "__add__") {
+        const name = prompt("Enter the name of the new course (e.g. Wedding DJ & MC):");
+        if (!name) {
+          // Reset selector back to current course
+          document.getElementById("course-selector").value = currentCourse;
+          return;
+        }
+        // Generate a slug from the name
+        const id = name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+        // Add option to selector
+        const sel = document.getElementById("course-selector");
+        const newOpt = document.createElement("option");
+        newOpt.value = id; newOpt.textContent = name;
+        // Insert before the "Add new course" option
+        sel.insertBefore(newOpt, sel.lastElementChild);
+        sel.value = id;
+        currentCourse = id;
+        modulesData = [];
+        activeModuleIdx = null; activeSubmoduleIdx = null; activeView = null;
+        document.getElementById("editor-panel").innerHTML = `<div class="empty-editor"><div style="font-size:2rem;">✦</div><p>Select a module or sub-module<br>from the sidebar to edit.</p></div>`;
+        loadAllModules();
+        showToast(`Course "${name}" created. Add modules to get started.`,"success");
+        return;
+      }
       currentCourse = courseId;
       modulesData = [];
       activeModuleIdx = null;
@@ -445,7 +490,7 @@
         // Module row
         const row = document.createElement("div");
         row.className = `cs-mod-row ${isActiveMod?"active":""}`;
-        row.draggable = true;
+        row.setAttribute("draggable","true");
         row.dataset.mi = mi;
         row.innerHTML = `
           <span class="cs-drag" title="Drag to reorder">⠿</span>
@@ -482,12 +527,55 @@
             <span class="cs-sub-title ${isActiveSub?"active":""}">${sub.order?sub.order+" — ":""}${sub.title||"Untitled"}</span>
             <button class="cs-icon-btn del" title="Delete" onclick="event.stopPropagation();deleteSubmodule(${mi},${si})">✕</button>`;
           subRow.addEventListener("click", ()=>selectSubmodule(mi,si));
+          // Submodule drag
+          subRow.setAttribute("draggable","true");
+          subRow.dataset.mi = mi;
+          subRow.dataset.si = si;
+          subRow.addEventListener("dragstart", e=>{
+            dragSrc=subRow; dragType="submodule";
+            e.dataTransfer.effectAllowed="move";
+            e.dataTransfer.setData("text/plain", JSON.stringify({mi,si}));
+            setTimeout(()=>subRow.style.opacity="0.4",0);
+            e.stopPropagation();
+          });
+          subRow.addEventListener("dragend",()=>{ subRow.style.opacity="1"; dragSrc=null; });
+          subRow.addEventListener("dragover",e=>{ e.preventDefault(); e.stopPropagation(); subRow.style.background="var(--gold-dim)"; });
+          subRow.addEventListener("dragleave",()=>{ subRow.style.background=""; });
+          subRow.addEventListener("drop",e=>{
+            e.preventDefault(); e.stopPropagation();
+            subRow.style.background="";
+            if (!dragSrc || dragType!=="submodule") return;
+            const {mi:fromMi, si:fromSi} = JSON.parse(e.dataTransfer.getData("text/plain"));
+            const toSi = si;
+            if (fromMi!==mi || fromSi===toSi) return;
+            const subs = modulesData[mi].submodules;
+            const item = subs.splice(fromSi,1)[0];
+            subs.splice(toSi,0,item);
+            // Renumber submodule orders
+            renumberSubmodules(mi);
+            if (activeSubmoduleIdx===fromSi) activeSubmoduleIdx=toSi;
+            else if (activeSubmoduleIdx>fromSi && activeSubmoduleIdx<=toSi) activeSubmoduleIdx--;
+            else if (activeSubmoduleIdx<fromSi && activeSubmoduleIdx>=toSi) activeSubmoduleIdx++;
+            renderSidebar();
+            showToast("Reordered — save sub-module to persist.","info");
+          });
           subList.appendChild(subRow);
         });
 
         modDiv.appendChild(subList);
         list.appendChild(modDiv);
       });
+    }
+
+    function refreshEditorHeading() {
+      if (activeView === "module" && activeModuleIdx !== null) {
+        const display = document.getElementById("editor-mod-title-display");
+        const subhead = display?.previousElementSibling;
+        if (subhead) subhead.textContent = `Module ${activeModuleIdx+1}`;
+      } else if (activeView === "submodule" && activeModuleIdx !== null && activeSubmoduleIdx !== null) {
+        const subhead = document.querySelector(".editor-subhead");
+        if (subhead) subhead.textContent = `Module ${activeModuleIdx+1} › Sub-module`;
+      }
     }
 
     // ── Sidebar drag to reorder modules ───────────────────────────────────────
@@ -511,13 +599,14 @@
         const item = modulesData.splice(fromIdx,1)[0];
         modulesData.splice(toIdx,0,item);
         // Update order numbers
-        modulesData.forEach((m,i)=>m.order=i+1);
+        renumberAllModules();
         // If active module moved, update index
         if (activeModuleIdx===fromIdx) activeModuleIdx=toIdx;
         else if (activeModuleIdx>fromIdx && activeModuleIdx<=toIdx) activeModuleIdx--;
         else if (activeModuleIdx<fromIdx && activeModuleIdx>=toIdx) activeModuleIdx++;
         renderSidebar();
-        showToast("Reordered — click Save to persist.","info");
+        refreshEditorHeading();
+        showToast("Reordered — save module to persist new order.","info");
       });
     }
 
@@ -571,8 +660,34 @@
     };
 
     // ── Add / delete module ───────────────────────────────────────────────────
-    window.addModule = function() {
-      const type = confirm("Is this a Quiz Module?\n\nClick OK for Quiz Module (randomized 30-question final exam)\nClick Cancel for a regular content module") ? "quiz" : "regular";
+    window.showAddModuleMenu = function() {
+      const menu = document.getElementById("add-module-menu");
+      const btn = document.querySelector('[title="Add module or quiz"]');
+      if (!menu) return;
+      if (menu.style.display === "none") {
+        // Position near the + button
+        const rect = btn ? btn.getBoundingClientRect() : {left:0,bottom:0};
+        menu.style.left = rect.left + "px";
+        menu.style.top = (rect.bottom + 8) + "px";
+        menu.style.display = "block";
+        // Click outside to close
+        setTimeout(()=>document.addEventListener("click", closeMenuOnOutside), 10);
+      } else {
+        menu.style.display = "none";
+      }
+    };
+
+    function closeMenuOnOutside(e) {
+      const menu = document.getElementById("add-module-menu");
+      if (menu && !menu.contains(e.target) && !e.target.closest('[title="Add module or quiz"]')) {
+        menu.style.display = "none";
+        document.removeEventListener("click", closeMenuOnOutside);
+      }
+    }
+
+    window.addModuleOfType = function(type) {
+      document.getElementById("add-module-menu").style.display = "none";
+      document.removeEventListener("click", closeMenuOnOutside);
       const newId = `module_${Date.now()}`;
       const newOrder = modulesData.length + 1;
       const defaultTitle = type === "quiz" ? "Final Certification Quiz" : "New Module";
@@ -586,8 +701,11 @@
       activeView = "module";
       renderSidebar();
       renderModuleEditor(activeModuleIdx);
-      showToast("New module added — fill in details and save.","info");
+      showToast(`New ${type==="quiz"?"quiz":"module"} added — fill in details and save.`,"info");
     };
+
+    // Keep old addModule as alias
+    window.addModule = function() { showAddModuleMenu(); };
 
     window.deleteModule = async function(mi) {
       const mod = modulesData[mi];
@@ -615,7 +733,7 @@
         } catch(e){ showToast("Error deleting from database.","error"); return; }
       }
       modulesData.splice(mi,1);
-      modulesData.forEach((m,i)=>m.order=i+1);
+      renumberAllModules();
       if (activeModuleIdx===mi) { activeModuleIdx=null; activeView=null; document.getElementById("editor-panel").innerHTML=`<div class="empty-editor"><div style="font-size:2rem;">✦</div><p>Select a module from the sidebar.</p></div>`; }
       else if (activeModuleIdx>mi) activeModuleIdx--;
       renderSidebar();
@@ -623,6 +741,20 @@
     };
 
     // ── Add / delete submodule ────────────────────────────────────────────────
+    function renumberSubmodules(mi) {
+      const mod = modulesData[mi];
+      (mod.submodules||[]).forEach((sub,si) => {
+        sub.order = `${mi+1}.${si+1}`;
+      });
+    }
+
+    function renumberAllModules() {
+      modulesData.forEach((mod,mi) => {
+        mod.order = mi+1;
+        renumberSubmodules(mi);
+      });
+    }
+
     window.addSubmodule = function(mi) {
       const mod = modulesData[mi];
       const count = (mod.submodules||[]).length + 1;
