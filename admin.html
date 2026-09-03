@@ -104,6 +104,23 @@
     .youtube-preview iframe{width:100%;aspect-ratio:16/9;border:none;display:block;}
     .img-preview{margin-top:8px;border-radius:var(--radius);overflow:hidden;max-height:180px;}
     .img-preview img{width:100%;object-fit:cover;display:block;}
+    /* ── Mobile ── */
+    @media(max-width:900px){
+      .content-layout{flex-direction:column;}
+      .content-sidebar{width:100% !important;min-width:unset !important;height:auto;max-height:280px;position:static;border-right:none;border-bottom:1px solid var(--border);}
+      .resize-handle{display:none;}
+      .editor-panel{max-height:unset !important;}
+    }
+    @media(max-width:600px){
+      .page-wrap-wide{padding:0.75rem !important;}
+      .form-row{grid-template-columns:1fr !important;}
+      .trainee-header{padding:0.75rem 1rem !important;gap:0.75rem !important;}
+      .detail-grid{grid-template-columns:1fr !important;}
+      .tabs{overflow-x:auto;}
+      .tab{padding:10px 14px;font-size:9px;}
+      .cs-mod-row{padding:8px;}
+      .editor-panel{padding:1rem !important;}
+    }
     .input-std{background:var(--surface);border:1px solid var(--gold-border);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-family:var(--font);font-size:14px;width:100%;}
     .textarea-std{background:var(--surface);border:1px solid var(--gold-border);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-family:var(--font);font-size:14px;width:100%;resize:vertical;min-height:80px;}
     .empty-editor{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;color:var(--text3);font-family:var(--serif);font-style:italic;text-align:center;gap:1rem;}
@@ -114,7 +131,7 @@
   <div class="loading-wrap" id="loading"><div class="spinner"></div><p>Loading admin...</p></div>
 
   <main id="main" style="display:none;">
-    <div style="max-width:1200px;margin:0 auto;padding:1.5rem 1.5rem 0;">
+    <div style="max-width:1200px;margin:0 auto;padding:1.5rem 1rem 0;">
       <div class="fade-up" style="margin-bottom:1rem;">
         <p style="font-family:var(--cinzel);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:4px;font-style:normal;">Admin Panel</p>
         <h1 class="gold-text">Training Management</h1>
