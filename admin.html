@@ -1232,11 +1232,11 @@
         : `<div style="font-size:13px;color:var(--text3);font-family:var(--font);margin-bottom:8px;">No password stored yet.</div>`;
 
       const pwCard = `
-        <div class="detail-card">
+        <div class="detail-card" style="min-width:0;">
           <div class="detail-card-label">Login password</div>
           ${pwDisplay}
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            ${trainee.tempPassword ? `<button class="btn btn-ghost btn-sm" id="pw-btn-${trainee.id}" onclick="togglePw('${trainee.id}','${trainee.tempPassword}')">👁 Show password</button>` : ""}
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;">
+            ${trainee.tempPassword ? `<button class="btn btn-ghost btn-sm" id="pw-btn-${trainee.id}" onclick="togglePw('${trainee.id}','${trainee.tempPassword}')">Show password</button>` : ""}
             <button class="btn btn-ghost btn-sm" onclick="updatePassword('${trainee.id}')">Set new password</button>
           </div>
           ${trainee.tempPassword ? `<p style="font-size:11px;color:var(--text3);font-family:var(--font);font-style:normal;margin-top:8px;">If they changed their own password, this won't reflect it.</p>` : ""}
@@ -1282,7 +1282,16 @@
           </div>
         </div>`;
 
-      return `<div class="detail-grid"><div class="detail-card"><div class="detail-card-label">Quiz Progress</div>${qr}</div>${pwCard}${profileCard}${SIGNOFF_STEPS.map(step=>{const done=cert[step.key],dv=cert[step.dateKey];const ds=dv?new Date(dv.seconds*1000).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"";return `<div class="detail-card"><div class="detail-card-label">${step.label}</div>${done?`<div class="badge badge-pass" style="margin-bottom:10px;display:block;">✓${ds?" · "+ds:""}</div><button class="btn btn-ghost btn-sm" onclick="handleRevoke('${trainee.id}','${step.key}','${step.dateKey}')">Revoke</button>`:`<div class="badge badge-locked" style="margin-bottom:10px;display:block;">Pending</div><button class="btn btn-primary btn-sm" onclick="handleSignOff('${trainee.id}','${step.key}','${step.dateKey}')">Sign Off ✓</button>`}</div>`;}).join("")}</div>`;
+      return `<div class="detail-grid"><div class="detail-card"><div class="detail-card-label">Quiz Progress</div>${qr}</div>${pwCard}${profileCard}<div class="detail-card">
+          <div class="detail-card-label">Field Sign-offs</div>
+          ${SIGNOFF_STEPS.map(step=>{const done=cert[step.key],dv=cert[step.dateKey];const ds=dv?new Date(dv.seconds*1000).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"";return `<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+              <span style="font-family:var(--cinzel);font-size:11px;font-weight:600;color:var(--text2);">${step.label}</span>
+              ${done?`<span class="badge badge-pass" style="font-size:9px;">✓${ds?" "+ds:""}</span>`:`<span class="badge badge-locked" style="font-size:9px;">Pending</span>`}
+            </div>
+            ${done?`<button class="btn btn-ghost btn-sm" style="font-size:10px;" onclick="handleRevoke('${trainee.id}','${step.key}','${step.dateKey}')">Revoke</button>`:`<button class="btn btn-primary btn-sm" style="font-size:10px;" onclick="handleSignOff('${trainee.id}','${step.key}','${step.dateKey}')">Sign Off ✓</button>`}
+          </div>`;}).join("")}
+        </div></div>`;
     }
 
     window.togglePw = function(uid, pw) {
@@ -1292,7 +1301,7 @@
       const isHidden = display.textContent === "••••••••";
       display.textContent = isHidden ? pw : "••••••••";
       display.style.letterSpacing = isHidden ? "normal" : ".08em";
-      if (btn) btn.textContent = isHidden ? "🙈 Hide password" : "👁 Show password";
+      if (btn) btn.textContent = isHidden ? "Hide password" : "Show password";
     };
 
     window.updatePassword = async function(uid) {
