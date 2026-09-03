@@ -29,7 +29,7 @@
   <main id="main" style="display:none;">
     <div class="profile-wrap">
       <div style="margin-bottom:1.5rem;">
-        <a href="dashboard.html" class="btn btn-ghost btn-sm">← Dashboard</a>
+        <a id="back-btn" href="dashboard.html" class="btn btn-ghost btn-sm">← Back</a>
       </div>
 
       <div style="text-align:center;margin-bottom:2rem;">
@@ -49,9 +49,24 @@
           <input type="text" id="field-djname" placeholder="DJ Midnight"/>
         </div>
         <div class="field-group">
-          <label>Photo URL</label>
-          <input type="text" id="field-photo" placeholder="https://... (link to your photo)"/>
-          <p style="font-size:12px;color:var(--text3);margin-top:6px;font-style:normal;font-family:var(--font);">Paste a direct link to an image. This appears on the public host verification page.</p>
+          <label>Profile Photo</label>
+          <!-- Upload option -->
+          <div style="border:2px dashed var(--gold-border);border-radius:var(--radius-lg);padding:1.25rem;text-align:center;margin-bottom:10px;cursor:pointer;transition:border-color .15s;" id="upload-zone" onclick="document.getElementById('photo-upload').click()">
+            <div id="upload-preview" style="margin-bottom:8px;">
+              <div style="font-size:2rem;color:var(--text3);">📷</div>
+              <div style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-top:4px;">Click to upload a photo</div>
+              <div style="font-size:12px;color:var(--text3);font-family:var(--font);margin-top:4px;">JPG, PNG — max 5MB</div>
+            </div>
+            <div id="upload-status" style="font-size:13px;font-family:var(--font);color:var(--text3);"></div>
+          </div>
+          <input type="file" id="photo-upload" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="handlePhotoUpload(this)"/>
+
+          <!-- OR URL fallback -->
+          <details style="margin-top:8px;">
+            <summary style="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);cursor:pointer;list-style:none;">Or paste an image URL instead</summary>
+            <input type="text" id="field-photo" placeholder="https://..." style="margin-top:8px;width:100%;background:var(--surface);border:1px solid var(--gold-border);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-family:var(--font);font-size:14px;box-sizing:border-box;"/>
+          </details>
+          <p style="font-size:12px;color:var(--text3);margin-top:8px;font-style:normal;font-family:var(--font);">Your photo appears on the public host verification page.</p>
         </div>
 
         <div id="save-profile-error" style="display:none;margin-bottom:10px;" class="error-msg"></div>
@@ -84,7 +99,9 @@
   <script type="module">
     import { requireAuth, renderNav, doLogout, db, showToast } from "./firebase-init.js";
     import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getAuth, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, updatePassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+    import { getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 
     window._logout = doLogout;
 
@@ -95,27 +112,29 @@
     };
 
     let currentUser = null;
-    let userProfile = null;
+    let uploadedPhotoUrl = null; // URL from Firebase Storage upload
 
     requireAuth(async (user, profile) => {
       currentUser = user;
-      userProfile = profile;
-      document.getElementById("nav-placeholder").innerHTML = renderNav(profile, profile.role === "admin");
+      document.getElementById("nav-placeholder").innerHTML = renderNav(profile, false);
 
-      // Populate fields
-      document.getElementById("field-name").value = profile.name || "";
-      document.getElementById("field-djname").value = profile.djName || "";
-      document.getElementById("field-photo").value = profile.photoUrl || "";
-
-      // Avatar
-      const avatar = document.getElementById("avatar-display");
-      if (profile.photoUrl) {
-        avatar.innerHTML = `<img src="${profile.photoUrl}" alt="${profile.name||""}"/>`;
+      const backBtn = document.getElementById("back-btn");
+      if (profile.role === "admin") {
+        backBtn.href = "admin.html";
+        backBtn.textContent = "← Back to Admin";
       } else {
-        avatar.textContent = (profile.name||"?").charAt(0).toUpperCase();
+        backBtn.href = "courses.html";
+        backBtn.textContent = "← Courses";
       }
 
-      // Tier badge
+      document.getElementById("field-name").value = profile.name || "";
+      document.getElementById("field-djname").value = profile.djName || "";
+      if (document.getElementById("field-photo")) {
+        document.getElementById("field-photo").value = profile.photoUrl || "";
+      }
+
+      updateAvatarDisplay(profile.photoUrl, profile.name);
+
       const tierEl = document.getElementById("tier-badge-display");
       if (profile.tier && TIER_LABELS[profile.tier]) {
         const t = TIER_LABELS[profile.tier];
@@ -124,14 +143,76 @@
         tierEl.innerHTML = `<span class="tier-display tier-none">No tier yet</span>`;
       }
 
+      // Show current photo in upload zone if exists
+      if (profile.photoUrl) {
+        document.getElementById("upload-preview").innerHTML =
+          `<img src="${profile.photoUrl}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--gold-border);margin:0 auto;display:block;"/>
+           <div style="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--success);margin-top:8px;">Current photo</div>`;
+      }
+
       document.getElementById("loading").style.display = "none";
       document.getElementById("main").style.display = "block";
     });
 
+    function updateAvatarDisplay(photoUrl, name) {
+      const avatar = document.getElementById("avatar-display");
+      if (photoUrl) {
+        avatar.innerHTML = `<img src="${photoUrl}" alt="${name||""}"/>`;
+      } else {
+        avatar.textContent = (name||"?").charAt(0).toUpperCase();
+      }
+    }
+
+    // ── Photo upload ──────────────────────────────────────────────────────────
+    window.handlePhotoUpload = async function(input) {
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+        showToast("Photo must be under 5MB.", "error");
+        return;
+      }
+
+      const statusEl = document.getElementById("upload-status");
+      const previewEl = document.getElementById("upload-preview");
+      statusEl.textContent = "Uploading...";
+
+      try {
+        const storage = getStorage(getApp());
+        const storageRef = ref(storage, `profile-photos/${currentUser.uid}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        uploadTask.on("state_changed",
+          snapshot => {
+            const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+            statusEl.textContent = `Uploading... ${pct}%`;
+          },
+          err => {
+            statusEl.textContent = "";
+            showToast("Upload failed: " + err.message, "error");
+          },
+          async () => {
+            const url = await getDownloadURL(uploadTask.snapshot.ref);
+            uploadedPhotoUrl = url;
+            statusEl.textContent = "";
+            previewEl.innerHTML = `
+              <img src="${url}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--gold-border);margin:0 auto;display:block;"/>
+              <div style="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--success);margin-top:8px;">✓ Ready to save</div>`;
+            updateAvatarDisplay(url, document.getElementById("field-name").value);
+            showToast("Photo uploaded — click Save Profile to keep it.", "success");
+          }
+        );
+      } catch(e) {
+        statusEl.textContent = "";
+        showToast("Upload error: " + e.message, "error");
+      }
+    };
+
+    // ── Save profile ──────────────────────────────────────────────────────────
     window.saveProfile = async function() {
       const name = document.getElementById("field-name").value.trim();
       const djName = document.getElementById("field-djname").value.trim();
-      const photoUrl = document.getElementById("field-photo").value.trim();
+      const urlField = document.getElementById("field-photo");
+      const photoUrl = uploadedPhotoUrl || (urlField ? urlField.value.trim() : "");
       const errEl = document.getElementById("save-profile-error");
       const btn = document.getElementById("save-profile-btn");
       errEl.style.display = "none";
@@ -141,15 +222,7 @@
       btn.textContent = "Saving..."; btn.disabled = true;
       try {
         await setDoc(doc(db,"users",currentUser.uid), {name, djName, photoUrl}, {merge:true});
-
-        // Update avatar preview
-        const avatar = document.getElementById("avatar-display");
-        if (photoUrl) {
-          avatar.innerHTML = `<img src="${photoUrl}" alt="${name}"/>`;
-        } else {
-          avatar.textContent = name.charAt(0).toUpperCase();
-        }
-
+        updateAvatarDisplay(photoUrl, name);
         showToast("Profile saved!", "success");
       } catch(e) {
         errEl.textContent = "Save failed: " + e.message;
@@ -159,6 +232,7 @@
       }
     };
 
+    // ── Change password ───────────────────────────────────────────────────────
     window.savePassword = async function() {
       const newPw = document.getElementById("field-newpw").value;
       const confirmPw = document.getElementById("field-confirmpw").value;
@@ -175,7 +249,6 @@
       try {
         const auth = getAuth();
         await updatePassword(auth.currentUser, newPw);
-        // Save new password to Firestore so admin can see it
         await setDoc(doc(db,"users",currentUser.uid), {tempPassword: newPw}, {merge:true});
         document.getElementById("field-newpw").value = "";
         document.getElementById("field-confirmpw").value = "";
@@ -185,7 +258,7 @@
       } catch(e) {
         let msg = e.message;
         if (e.code === "auth/requires-recent-login") {
-          msg = "For security, please sign out and sign back in before changing your password.";
+          msg = "For security, sign out and back in before changing your password.";
         }
         errEl.textContent = msg; errEl.style.display = "block";
       } finally {
