@@ -6,9 +6,15 @@
   <title>Belladonna Training — Sign in</title>
   <link rel="stylesheet" href="style.css"/>
   <style>
-    .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--bg);}
+    .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:var(--bg);}
     .login-box{width:100%;max-width:400px;}
     .form-group{margin-bottom:1rem;}
+    @media(max-width:480px){
+      .login-wrap{padding:1rem;}
+      .login-box{max-width:100%;}
+      .login-title{font-size:2rem !important;}
+      .card{padding:1.25rem !important;}
+    }
   </style>
 </head>
 <body>
@@ -17,7 +23,7 @@
       <div class="login-brand">
         <img src="logo.png" class="login-logo" onerror="this.style.display='none'" alt="Belladonna"/>
         <div class="login-title">BELLADONNA</div>
-        <div class="login-sub">Host Training Portal</div>
+        <div class="login-sub">Host Academy</div>
       </div>
 
       <div class="card" style="margin-top:1.5rem;">
