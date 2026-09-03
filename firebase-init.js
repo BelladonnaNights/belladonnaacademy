@@ -24,8 +24,11 @@ export const revokeSignOffFn = httpsCallable(functions, "revokeSignOff");
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
 export function requireAuth(callback) {
+  let called = false;
   onAuthStateChanged(auth, async (user) => {
+    if (called) return; // prevent double-fire
     if (!user) { window.location.href = "login.html"; return; }
+    called = true;
     const snap = await getDoc(doc(db, "users", user.uid));
     const profile = snap.exists() ? snap.data() : {};
     callback(user, profile);
@@ -33,11 +36,14 @@ export function requireAuth(callback) {
 }
 
 export function requireAdmin(callback) {
+  let called = false;
   onAuthStateChanged(auth, async (user) => {
+    if (called) return;
     if (!user) { window.location.href = "login.html"; return; }
+    called = true;
     const snap = await getDoc(doc(db, "users", user.uid));
     const profile = snap.exists() ? snap.data() : {};
-    if (profile.role !== "admin") { window.location.href = "dashboard.html"; return; }
+    if (profile.role !== "admin") { window.location.href = "courses.html"; return; }
     callback(user, profile);
   });
 }
