@@ -57,7 +57,7 @@
       if (user) {
         const snap = await getDoc(doc(db, "users", user.uid));
         const profile = snap.exists() ? snap.data() : {};
-        window.location.href = profile.role === "admin" ? "admin.html" : "dashboard.html";
+        window.location.href = profile.role === "admin" ? "admin.html" : "courses.html";
       }
     });
 
@@ -81,7 +81,7 @@
         const cred = await signInWithEmailAndPassword(auth, email, password);
         const snap = await getDoc(doc(db, "users", cred.user.uid));
         const profile = snap.exists() ? snap.data() : {};
-        window.location.href = profile.role === "admin" ? "admin.html" : "dashboard.html";
+        window.location.href = profile.role === "admin" ? "admin.html" : "courses.html";
       } catch (e) {
         err.textContent = "Invalid email or password.";
         err.style.display = "block";
