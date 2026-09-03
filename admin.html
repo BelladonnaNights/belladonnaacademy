@@ -139,6 +139,7 @@
       <div class="tabs">
         <button class="tab active" onclick="switchTab('trainees')">Trainees</button>
         <button class="tab" onclick="switchTab('content')">Module Content</button>
+        <button class="tab" onclick="switchTab('settings')">Settings</button>
       </div>
     </div>
 
@@ -186,6 +187,74 @@
       </div>
 
     </div>
+
+    <!-- SETTINGS TAB -->
+    <div class="tab-panel" id="tab-settings" style="padding:1.5rem;max-width:900px;margin:0 auto;">
+
+      <!-- Access Codes -->
+      <div class="card fade-up" style="margin-bottom:2rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+          <div>
+            <h3 style="font-family:var(--cinzel);font-size:14px;letter-spacing:.06em;text-transform:uppercase;">Access Codes</h3>
+            <p style="font-size:13px;color:var(--text3);margin-top:4px;">Hosts enter these on the courses page to unlock a course.</p>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="showAddCode()">+ Add Code</button>
+        </div>
+
+        <!-- Add code form (hidden by default) -->
+        <div id="add-code-form" style="display:none;background:var(--surface2);border:1px solid var(--gold-border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.5rem;">
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+            <div>
+              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px;">Code</label>
+              <input type="text" id="new-code-value" placeholder="e.g. ACADEMY2025" class="input-std" style="text-transform:uppercase;"/>
+            </div>
+            <div>
+              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px;">Unlocks Course</label>
+              <select id="new-code-course" class="input-std">
+                <option value="certification">Host Certification</option>
+                <option value="academy">Belladonna Academy</option>
+                <option value="trivia">Trivia Time Transfer</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-primary" onclick="saveNewCode()">Save</button>
+              <button class="btn btn-ghost" onclick="document.getElementById('add-code-form').style.display='none'">Cancel</button>
+            </div>
+          </div>
+          <div id="add-code-error" style="display:none;margin-top:10px;" class="error-msg"></div>
+        </div>
+
+        <!-- Code list -->
+        <div id="codes-list">
+          <div style="text-align:center;padding:2rem;color:var(--text3);font-family:var(--serif);font-style:italic;">Loading codes...</div>
+        </div>
+      </div>
+
+      <!-- Course Blurbs -->
+      <div class="card fade-up" style="animation-delay:.1s;">
+        <h3 style="font-family:var(--cinzel);font-size:14px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">Course Page Text</h3>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:1.5rem;">Edit the taglines and descriptions shown on the course selection page.</p>
+
+        ${['certification','academy','trivia'].map(id => `
+          <div style="margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);">
+            <div style="font-family:var(--cinzel);font-size:12px;letter-spacing:.06em;font-weight:600;margin-bottom:10px;color:var(--gold2);">
+              ${{certification:'Host Certification',academy:'Belladonna Academy',trivia:'Trivia Time Transfer'}[id]}
+            </div>
+            <div style="margin-bottom:8px;">
+              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px;">Short tagline (on card)</label>
+              <input type="text" id="tagline-${id}" class="input-std" placeholder="One-line tagline..."/>
+            </div>
+            <div>
+              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px;">Longer blurb ("which one is for you" section)</label>
+              <textarea id="blurb-${id}" class="textarea-std" rows="3" placeholder="Longer description..."></textarea>
+            </div>
+          </div>`).join('')}
+
+        <div id="blurb-save-status" style="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;color:var(--text3);margin-bottom:10px;"></div>
+        <button class="btn btn-primary" onclick="saveBlurbs()">Save Course Text</button>
+      </div>
+    </div>
+
   </main>
 
   <!-- Preview modal -->
@@ -227,10 +296,11 @@
 
     // ── Tab switch ────────────────────────────────────────────────────────────
     window.switchTab = function(tab) {
-      document.querySelectorAll(".tab").forEach((t,i)=>t.classList.toggle("active",["trainees","content"][i]===tab));
+      document.querySelectorAll(".tab").forEach((t,i)=>t.classList.toggle("active",["trainees","content","settings"][i]===tab));
       document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
       document.getElementById(`tab-${tab}`).classList.add("active");
       if (tab==="content" && modulesData.length===0) loadAllModules();
+      if (tab==="settings") loadSettings();
     };
 
     // ── Init ──────────────────────────────────────────────────────────────────
@@ -1282,7 +1352,28 @@
           </div>
         </div>`;
 
-      return `<div class="detail-grid"><div class="detail-card"><div class="detail-card-label">Quiz Progress</div>${qr}</div>${pwCard}${profileCard}<div class="detail-card">
+      const COURSE_DEFS = [
+        {id:"certification",label:"Host Certification",lockedKey:"certificationLocked"},
+        {id:"academy",label:"Belladonna Academy",lockedKey:"academyLocked"},
+        {id:"trivia",label:"Trivia Time Transfer",lockedKey:"triviaLocked"},
+      ];
+      const accessCard = `
+        <div class="detail-card" style="min-width:0;">
+          <div class="detail-card-label">Course Access</div>
+          <p style="font-size:12px;color:var(--text3);font-family:var(--font);margin-bottom:12px;">☑ Checked = Locked &nbsp;·&nbsp; Unchecked = Unlocked</p>
+          ${COURSE_DEFS.map(c => {
+            const isLocked = trainee[c.lockedKey] !== false;
+            return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <input type="checkbox" id="lock-${c.id}-${trainee.id}"
+                ${isLocked ? "checked" : ""}
+                style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex-shrink:0;"
+                onchange="toggleCourseAccess('${trainee.id}','${c.lockedKey}',this.checked)"/>
+              <label for="lock-${c.id}-${trainee.id}" style="font-family:var(--cinzel);font-size:11px;letter-spacing:.04em;cursor:pointer;color:var(--text2);">${c.label}</label>
+            </div>`;
+          }).join("")}
+        </div>`;
+
+      return `<div class="detail-grid"><div class="detail-card"><div class="detail-card-label">Quiz Progress</div>${qr}</div>${pwCard}${accessCard}${profileCard}<div class="detail-card">
           <div class="detail-card-label">Field Sign-offs</div>
           ${SIGNOFF_STEPS.map(step=>{const done=cert[step.key],dv=cert[step.dateKey];const ds=dv?new Date(dv.seconds*1000).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"";return `<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
@@ -1571,6 +1662,152 @@
     document.addEventListener("change", e => {
       if (e.target.closest("#editor-panel")) markUnsaved();
     });
+
+    // ── Course access toggle ─────────────────────────────────────────────────
+    window.toggleCourseAccess = async function(uid, lockedKey, isLocked) {
+      try {
+        await setDoc(doc(db,"users",uid),{[lockedKey]: isLocked},{merge:true});
+        const t = allTrainees.find(t=>t.id===uid);
+        if (t) t[lockedKey] = isLocked;
+        showToast(isLocked ? "Course locked." : "Course unlocked.", "success");
+      } catch(e) {
+        showToast("Failed to update access: "+e.message,"error");
+      }
+    };
+
+    // ── Settings tab ──────────────────────────────────────────────────────────
+    let codesData = [];
+    let settingsLoaded = false;
+
+    async function loadSettings() {
+      if (settingsLoaded) return;
+      settingsLoaded = true;
+      await Promise.all([loadCodes(), loadBlurbs()]);
+    }
+
+    async function loadCodes() {
+      try {
+        const snap = await getDocs(collection(db,"accessCodes"));
+        codesData = snap.docs.map(d=>({id:d.id,...d.data()}));
+        renderCodes();
+      } catch(e) {
+        document.getElementById("codes-list").innerHTML = `<p style="color:var(--danger);font-family:var(--font);">Error loading codes: ${e.message}</p>`;
+      }
+    }
+
+    function renderCodes() {
+      const list = document.getElementById("codes-list");
+      if (!codesData.length) {
+        list.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text3);font-family:var(--serif);font-style:italic;">No access codes yet. Add one above.</div>`;
+        return;
+      }
+      const COURSE_NAMES = {certification:"Host Certification",academy:"Belladonna Academy",trivia:"Trivia Time Transfer"};
+      list.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border);">
+              <th style="text-align:left;padding:8px 12px;font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:400;">Code</th>
+              <th style="text-align:left;padding:8px 12px;font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:400;">Unlocks</th>
+              <th style="text-align:left;padding:8px 12px;font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:400;">Status</th>
+              <th style="padding:8px 12px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${codesData.map(code=>`
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:10px 12px;font-family:var(--cinzel);font-size:13px;letter-spacing:.08em;color:var(--text);">${code.code||""}</td>
+                <td style="padding:10px 12px;font-size:13px;color:var(--text2);font-family:var(--font);">${COURSE_NAMES[code.course]||code.course||""}</td>
+                <td style="padding:10px 12px;">
+                  <span style="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;padding:3px 10px;border-radius:99px;border:1px solid;${code.active!==false?"background:var(--success-bg);border-color:var(--success-border);color:var(--success);":"background:var(--surface2);border-color:var(--border2);color:var(--text3);"}">
+                    ${code.active!==false?"Active":"Inactive"}
+                  </span>
+                </td>
+                <td style="padding:10px 12px;text-align:right;display:flex;gap:6px;justify-content:flex-end;">
+                  <button class="btn btn-ghost btn-sm" onclick="toggleCode('${code.id}',${code.active!==false})">${code.active!==false?"Deactivate":"Activate"}</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="deleteCode('${code.id}')">Delete</button>
+                </td>
+              </tr>`).join("")}
+          </tbody>
+        </table>`;
+    }
+
+    window.showAddCode = function() {
+      document.getElementById("add-code-form").style.display="block";
+      document.getElementById("new-code-value").focus();
+    };
+
+    window.saveNewCode = async function() {
+      const code = document.getElementById("new-code-value").value.trim().toUpperCase();
+      const course = document.getElementById("new-code-course").value;
+      const errEl = document.getElementById("add-code-error");
+      errEl.style.display="none";
+      if (!code) { errEl.textContent="Enter a code."; errEl.style.display="block"; return; }
+      if (codesData.find(c=>c.code===code)) { errEl.textContent="That code already exists."; errEl.style.display="block"; return; }
+      const COURSE_NAMES = {certification:"Host Certification",academy:"Belladonna Academy",trivia:"Trivia Time Transfer"};
+      try {
+        const newRef = doc(collection(db,"accessCodes"));
+        const data = {code, course, courseName:COURSE_NAMES[course]||course, active:true, createdAt:serverTimestamp()};
+        await setDoc(newRef, data);
+        codesData.push({id:newRef.id,...data});
+        renderCodes();
+        document.getElementById("new-code-value").value="";
+        document.getElementById("add-code-form").style.display="none";
+        showToast("Code added.","success");
+      } catch(e) { errEl.textContent="Failed: "+e.message; errEl.style.display="block"; }
+    };
+
+    window.toggleCode = async function(id, currentlyActive) {
+      try {
+        await setDoc(doc(db,"accessCodes",id),{active:!currentlyActive},{merge:true});
+        const c = codesData.find(c=>c.id===id);
+        if (c) c.active=!currentlyActive;
+        renderCodes();
+        showToast(currentlyActive?"Code deactivated.":"Code activated.","success");
+      } catch(e) { showToast("Failed: "+e.message,"error"); }
+    };
+
+    window.deleteCode = async function(id) {
+      if (!confirm("Delete this access code?")) return;
+      try {
+        await deleteDoc(doc(db,"accessCodes",id));
+        codesData = codesData.filter(c=>c.id!==id);
+        renderCodes();
+        showToast("Code deleted.","success");
+      } catch(e) { showToast("Failed: "+e.message,"error"); }
+    };
+
+    async function loadBlurbs() {
+      try {
+        const snap = await getDoc(doc(db,"settings","courses"));
+        const data = snap.exists() ? snap.data() : {};
+        const fields = ["certification","academy","trivia"];
+        fields.forEach(id => {
+          const tEl = document.getElementById(`tagline-${id}`);
+          const bEl = document.getElementById(`blurb-${id}`);
+          if (tEl) tEl.value = data[`${id}Tagline`]||"";
+          if (bEl) bEl.value = data[`${id}Blurb`]||"";
+        });
+      } catch(e) { console.error("loadBlurbs:",e); }
+    }
+
+    window.saveBlurbs = async function() {
+      const statusEl = document.getElementById("blurb-save-status");
+      statusEl.textContent = "Saving..."; statusEl.style.color="var(--text3)";
+      const fields = ["certification","academy","trivia"];
+      const data = {};
+      fields.forEach(id => {
+        data[`${id}Tagline`] = document.getElementById(`tagline-${id}`)?.value.trim()||"";
+        data[`${id}Blurb`] = document.getElementById(`blurb-${id}`)?.value.trim()||"";
+      });
+      try {
+        await setDoc(doc(db,"settings","courses"), data, {merge:true});
+        statusEl.textContent = "✓ Saved"; statusEl.style.color="var(--success)";
+        showToast("Course text saved.","success");
+        setTimeout(()=>statusEl.textContent="",3000);
+      } catch(e) {
+        statusEl.textContent = "Save failed: "+e.message; statusEl.style.color="var(--danger)";
+      }
+    };
 
     // ── Resizable sidebar ─────────────────────────────────────────────────────
     (function() {
