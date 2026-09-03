@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Belladonna Host Academy — Dashboard</title>
   <link rel="stylesheet" href="style.css"/>
+  <style>
+    @media(max-width:600px){
+      .page-wrap{padding:1rem !important;}
+      h1{font-size:1.8rem !important;}
+      .module-row{padding:0.75rem 1rem !important;gap:0.75rem !important;}
+      .mod-circle{width:32px !important;height:32px !important;font-size:12px !important;}
+      .check-row{font-size:13px;}
+    }
+  </style>
 </head>
 <body>
   <div id="nav-placeholder"></div>
@@ -88,27 +97,16 @@
         const circleClass = status === "passed" ? "done" : locked ? "locked" : "current";
         const scoreNote = prog?.quizScore != null ? ` · Quiz: ${prog.quizScore}/${mod.totalQuestions||5}` : "";
 
-        if (locked) {
-          list.innerHTML += `
-            <div class="module-row locked" style="animation-delay:${0.07*idx+0.1}s;">
-              <div class="mod-circle locked">${idx+1}</div>
-              <div style="flex:1;">
-                <div style="font-family:var(--cinzel);font-size:13px;font-weight:600;letter-spacing:.04em;margin-bottom:2px;">${mod.title||"Module "+(idx+1)}</div>
-                <div class="text-muted">${mod.description||""}${scoreNote}</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">${statusBadge}</div>
-            </div>`;
-        } else {
-          list.innerHTML += `
-            <a href="modules.html?id=${mod.id}" class="module-row ${status==="in_progress"?"active-module":""} fade-up" style="animation-delay:${0.07*idx+0.1}s;">
-              <div class="mod-circle ${circleClass}">${status==="passed"?"✓":idx+1}</div>
-              <div style="flex:1;">
-                <div style="font-family:var(--cinzel);font-size:13px;font-weight:600;letter-spacing:.04em;margin-bottom:2px;">${mod.title||"Module "+(idx+1)}</div>
-                <div class="text-muted">${mod.description||""}${scoreNote}</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">${statusBadge}<span style="color:var(--gold);">→</span></div>
-            </a>`;
-        }
+        // All modules always available
+        list.innerHTML += `
+          <a href="modules.html?id=${mod.id}" class="module-row ${status==="in_progress"?"active-module":""} ${status==="passed"?"":""}fade-up" style="animation-delay:${0.07*idx+0.1}s;">
+            <div class="mod-circle ${circleClass}">${status==="passed"?"✓":idx+1}</div>
+            <div style="flex:1;">
+              <div style="font-family:var(--cinzel);font-size:13px;font-weight:600;letter-spacing:.04em;margin-bottom:2px;">${mod.title||"Module "+(idx+1)}</div>
+              <div class="text-muted">${mod.description||""}${scoreNote}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">${statusBadge}<span style="color:var(--gold);">→</span></div>
+          </a>`;
       });
 
       // Cert checklist
