@@ -21,7 +21,7 @@
     .trainee-header.expanded{background:var(--surface2);border-left:2px solid var(--gold-border);}
     .trainee-detail{padding:1rem 1.5rem 1.25rem;background:var(--surface2);border-top:1px solid var(--border);display:none;}
     .trainee-detail.open{display:block;}
-    .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;}
+    .detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:12px;}
     .detail-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;}
     .detail-card-label{font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
     .quiz-line{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);}
@@ -235,7 +235,7 @@
 
     // ── Init ──────────────────────────────────────────────────────────────────
     requireAdmin(async (user, profile) => {
-      document.getElementById("nav-placeholder").innerHTML = renderNav(profile, true);
+      document.getElementById("nav-placeholder").innerHTML = renderNav(profile, false);
       await loadTrainees();
       document.getElementById("loading").style.display="none";
       document.getElementById("main").style.display="block";
@@ -1251,29 +1251,35 @@
       const currentTier = trainee.tier||"";
       const TIER_LABELS = {certified_host:"🥉 Certified Host",verified_host:"🥈 Verified Host",audio_alchemist:"🥇 Audio Alchemist"};
       const profileCard = `
-        <div class="detail-card">
-          <div class="detail-card-label">Profile</div>
+        <div class="detail-card" style="min-width:0;overflow:hidden;">
+          <div class="detail-card-label">Host Profile</div>
+          ${currentTier
+            ? `<div style="margin-bottom:10px;padding:5px 12px;background:var(--gold-dim);border:1px solid var(--gold-border);border-radius:99px;display:inline-flex;align-items:center;gap:6px;font-family:var(--cinzel);font-size:11px;color:var(--gold2);">${TIER_LABELS[currentTier]||currentTier}</div>`
+            : `<div style="margin-bottom:10px;font-family:var(--cinzel);font-size:11px;color:var(--text3);">No tier yet</div>`
+          }
           <div style="margin-bottom:8px;">
-            <label style="font-size:11px;color:var(--text3);font-family:var(--cinzel);letter-spacing:.06em;">DJ / Stage Name</label>
+            <label style="font-size:10px;color:var(--text3);font-family:var(--cinzel);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:4px;">DJ / Stage Name</label>
             <input type="text" id="djname-${trainee.id}" value="${trainee.djName||""}"
               placeholder="DJ Midnight"
-              style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;width:100%;margin-top:4px;"/>
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;width:100%;box-sizing:border-box;"/>
           </div>
           <div style="margin-bottom:8px;">
-            <label style="font-size:11px;color:var(--text3);font-family:var(--cinzel);letter-spacing:.06em;">Photo URL (for public lookup)</label>
+            <label style="font-size:10px;color:var(--text3);font-family:var(--cinzel);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:4px;">Photo URL (public lookup)</label>
             <input type="text" id="photo-${trainee.id}" value="${trainee.photoUrl||""}"
               placeholder="https://..."
-              style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;width:100%;margin-top:4px;"/>
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;width:100%;box-sizing:border-box;"/>
           </div>
-          <div style="margin-bottom:10px;">
-            <label style="font-size:11px;color:var(--text3);font-family:var(--cinzel);letter-spacing:.06em;">Certification Tier</label>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:10px;color:var(--text3);font-family:var(--cinzel);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:4px;">Change Tier</label>
             <select id="tier-${trainee.id}"
-              style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;width:100%;margin-top:4px;">
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;width:100%;box-sizing:border-box;">
               ${tierOptions.map(o=>`<option value="${o.val}" ${currentTier===o.val?"selected":""}>${o.label}</option>`).join("")}
             </select>
           </div>
-          ${currentTier?`<div class="badge badge-pass" style="margin-bottom:10px;display:inline-block;">${TIER_LABELS[currentTier]||currentTier}</div><br/>`:""}
-          <button class="btn btn-primary btn-sm" onclick="saveProfile('${trainee.id}')">Save Profile</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn btn-primary btn-sm" onclick="saveProfile('${trainee.id}')">Save Profile</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="deleteTrainee('${trainee.id}','${(trainee.name||"").replace(/'/g,"\\'")}')">Delete</button>
+          </div>
         </div>`;
 
       return `<div class="detail-grid"><div class="detail-card"><div class="detail-card-label">Quiz Progress</div>${qr}</div>${pwCard}${profileCard}${SIGNOFF_STEPS.map(step=>{const done=cert[step.key],dv=cert[step.dateKey];const ds=dv?new Date(dv.seconds*1000).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"";return `<div class="detail-card"><div class="detail-card-label">${step.label}</div>${done?`<div class="badge badge-pass" style="margin-bottom:10px;display:block;">✓${ds?" · "+ds:""}</div><button class="btn btn-ghost btn-sm" onclick="handleRevoke('${trainee.id}','${step.key}','${step.dateKey}')">Revoke</button>`:`<div class="badge badge-locked" style="margin-bottom:10px;display:block;">Pending</div><button class="btn btn-primary btn-sm" onclick="handleSignOff('${trainee.id}','${step.key}','${step.dateKey}')">Sign Off ✓</button>`}</div>`;}).join("")}</div>`;
