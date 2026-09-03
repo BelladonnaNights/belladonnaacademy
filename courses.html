@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Belladonna Academy — Courses</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .courses-wrap { max-width:900px; margin:0 auto; padding:2.5rem 1.5rem 4rem; }
+
+    /* Course cards */
+    .course-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1.25rem; margin-top:2rem; }
+    .course-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; display:flex; flex-direction:column; transition:border-color .2s; position:relative; }
+    .course-card:not(.locked):hover { border-color:var(--gold-border); }
+    .course-card.locked { opacity:.65; }
+    .course-card-banner { height:120px; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:2.5rem; }
+    .course-card-body { padding:1.25rem; flex:1; display:flex; flex-direction:column; gap:8px; }
+    .course-card-label { font-family:var(--cinzel); font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--text3); }
+    .course-card-title { font-family:var(--display); font-size:1.5rem; letter-spacing:.06em; background:linear-gradient(135deg,#c9a84c,#f5df90,#c9a84c); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; line-height:1.2; }
+    .course-card-tagline { font-family:var(--serif); font-style:italic; font-size:14px; color:var(--text2); line-height:1.5; flex:1; }
+    .course-card-footer { padding:1rem 1.25rem; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .locked-badge { font-family:var(--cinzel); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text3); display:flex; align-items:center; gap:6px; }
+    .status-badge { font-family:var(--cinzel); font-size:10px; letter-spacing:.1em; text-transform:uppercase; }
+    .status-in-progress { color:var(--gold); }
+    .status-complete { color:var(--success); }
+
+    /* Access code section */
+    .access-section { margin-top:2.5rem; text-align:center; }
+    .access-toggle { background:none; border:none; cursor:pointer; font-family:var(--cinzel); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--text3); text-decoration:underline; padding:0; }
+    .access-toggle:hover { color:var(--gold); }
+    .access-form { margin-top:1rem; display:none; max-width:360px; margin-left:auto; margin-right:auto; }
+    .access-form.open { display:block; }
+    .access-row { display:flex; gap:8px; }
+    .access-row input { flex:1; }
+    .access-error { color:var(--danger); font-size:13px; font-family:var(--font); margin-top:8px; display:none; }
+    .access-success { color:var(--success); font-size:13px; font-family:var(--font); margin-top:8px; display:none; }
+
+    /* Which one is for you */
+    .which-section { margin-top:3rem; border-top:1px solid var(--border); padding-top:2rem; }
+    .which-title { font-family:var(--cinzel); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--text3); margin-bottom:1.25rem; text-align:center; }
+    .which-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; }
+    .which-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:1.25rem; }
+    .which-name { font-family:var(--cinzel); font-size:13px; font-weight:600; letter-spacing:.04em; color:var(--text); margin-bottom:8px; }
+    .which-blurb { font-family:var(--serif); font-style:italic; font-size:14px; color:var(--text2); line-height:1.6; }
+
+    @media(max-width:600px){
+      .courses-wrap{padding:1.5rem 1rem 3rem;}
+      .course-grid{grid-template-columns:1fr;}
+      .access-row{flex-direction:column;}
+      .access-row button{width:100%;}
+    }
+  </style>
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+  <div class="loading-wrap" id="loading"><div class="spinner"></div><p>Loading...</p></div>
+
+  <main id="main" style="display:none;">
+    <div class="courses-wrap">
+
+      <div class="fade-up" style="margin-bottom:0.5rem;">
+        <p style="font-family:var(--cinzel);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;font-style:normal;">Welcome back, <span id="host-name"></span></p>
+        <h1 class="gold-text">Your Courses</h1>
+        <p style="margin-top:8px;">Select a course below to continue your training.</p>
+      </div>
+
+      <div class="ornament"><div class="ornament-line"></div><div class="ornament-diamond"></div><div class="ornament-line"></div></div>
+
+      <div class="course-grid" id="course-grid">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Access code -->
+      <div class="access-section">
+        <p style="font-size:13px;color:var(--text3);font-family:var(--font);margin-bottom:8px;">See below for which course is right for you.</p>
+        <button class="access-toggle" onclick="toggleAccessForm()">Have an access code? Click here</button>
+        <div class="access-form" id="access-form">
+          <div class="access-row" style="margin-top:1rem;">
+            <input type="text" id="access-code-input" placeholder="Enter your access code" style="text-transform:uppercase;letter-spacing:.08em;"/>
+            <button class="btn btn-primary" onclick="submitAccessCode()">Unlock</button>
+          </div>
+          <div class="access-error" id="access-error"></div>
+          <div class="access-success" id="access-success"></div>
+        </div>
+      </div>
+
+      <!-- Which one is for you -->
+      <div class="which-section">
+        <div class="which-title">Not sure which course is right for you?</div>
+        <div class="which-grid" id="which-grid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div class="toast-wrap" id="toast-wrap"></div>
+
+  <script type="module">
+    import { requireAuth, renderNav, doLogout, db, showToast } from "./firebase-init.js";
+    import { doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    window._logout = doLogout;
+
+    // Course definitions — order: Certification, Academy, Trivia Time
+    const COURSES = [
+      {
+        id: "certification",
+        name: "Host Certification",
+        emoji: "🎤",
+        taglineKey: "certificationTagline",
+        blurbKey: "certificationBlurb",
+        defaultTagline: "Become a Belladonna Certified Host, anywhere in the world.",
+        defaultBlurb: "For independent hosts who want professional karaoke hosting credentials without working directly for Belladonna. Build your skills, earn your badge, and use your certification to book gigs on your own terms.",
+        href: "dashboard.html?course=certification",
+        lockedKey: "certificationLocked",
+      },
+      {
+        id: "academy",
+        name: "Belladonna Academy",
+        emoji: "✦",
+        taglineKey: "academyTagline",
+        blurbKey: "academyBlurb",
+        defaultTagline: "Full-spectrum hosting training for Belladonna employees.",
+        defaultBlurb: "For local Belladonna hires. Covers everything from hardware and software to karaoke mastery, sound basics, bingo, trivia, and the art of being an unforgettable host. This is the full program.",
+        href: "dashboard.html?course=academy",
+        lockedKey: "academyLocked",
+      },
+      {
+        id: "trivia",
+        name: "Trivia Time Transfer",
+        emoji: "❓",
+        taglineKey: "triviaTagline",
+        blurbKey: "triviaBlurb",
+        defaultTagline: "A quick transition course for Trivia Time hosts joining Belladonna.",
+        defaultBlurb: "If you're coming from Trivia Time, this short course covers Belladonna's branding, energy standards, and software so you can hit the ground running.",
+        href: "dashboard.html?course=trivia",
+        lockedKey: "triviaLocked",
+      },
+    ];
+
+    let currentUser = null;
+    let userProfile = null;
+    let siteSettings = {};
+
+    requireAuth(async (user, profile) => {
+      currentUser = user;
+      userProfile = profile;
+      document.getElementById("nav-placeholder").innerHTML = renderNav(profile, profile.role === "admin");
+      document.getElementById("host-name").textContent = profile.name?.split(" ")[0] || "Host";
+
+      // Load site settings (blurbs, taglines) from Firestore
+      try {
+        const settingsSnap = await getDoc(doc(db,"settings","courses"));
+        if (settingsSnap.exists()) siteSettings = settingsSnap.data();
+      } catch(e) {}
+
+      renderCourses();
+      renderWhichSection();
+
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("main").style.display = "block";
+    });
+
+    function renderCourses() {
+      const grid = document.getElementById("course-grid");
+      grid.innerHTML = "";
+
+      COURSES.forEach(course => {
+        const locked = userProfile[course.lockedKey] !== false; // default locked unless explicitly false
+        const tagline = siteSettings[course.taglineKey] || course.defaultTagline;
+        const inProgress = userProfile[`${course.id}Progress`] === "in_progress";
+        const completed = userProfile[`${course.id}Progress`] === "completed";
+
+        const statusHtml = completed
+          ? `<span class="status-badge status-complete">✓ Completed</span>`
+          : inProgress
+          ? `<span class="status-badge status-in-progress">● In Progress</span>`
+          : "";
+
+        const card = document.createElement("div");
+        card.className = `course-card ${locked ? "locked" : ""}`;
+        card.innerHTML = `
+          <div class="course-card-banner">${course.emoji}</div>
+          <div class="course-card-body">
+            <div class="course-card-label">${locked ? "🔒 Locked" : "Available"}</div>
+            <div class="course-card-title">${course.name}</div>
+            <div class="course-card-tagline">${tagline}</div>
+          </div>
+          <div class="course-card-footer">
+            ${statusHtml}
+            ${locked
+              ? `<span class="locked-badge">Access code required</span>`
+              : `<a href="${course.href}" class="btn btn-primary btn-sm">${completed ? "Review" : inProgress ? "Continue →" : "Start →"}</a>`
+            }
+          </div>`;
+        grid.appendChild(card);
+      });
+    }
+
+    function renderWhichSection() {
+      const grid = document.getElementById("which-grid");
+      grid.innerHTML = "";
+      COURSES.forEach(course => {
+        const blurb = siteSettings[course.blurbKey] || course.defaultBlurb;
+        grid.innerHTML += `
+          <div class="which-card">
+            <div class="which-name">${course.emoji} ${course.name}</div>
+            <div class="which-blurb">${blurb}</div>
+          </div>`;
+      });
+    }
+
+    // Access code system
+    const ACCESS_CODES = {
+      // Format: "CODE": "courseId"
+      // These are set in admin — for now hardcoded
+      // Will be loaded from Firestore in future
+    };
+
+    window.toggleAccessForm = function() {
+      document.getElementById("access-form").classList.toggle("open");
+    };
+
+    window.submitAccessCode = async function() {
+      const raw = document.getElementById("access-code-input").value.trim().toUpperCase();
+      const errEl = document.getElementById("access-error");
+      const successEl = document.getElementById("access-success");
+      errEl.style.display = "none"; successEl.style.display = "none";
+
+      if (!raw) { errEl.textContent = "Enter a code."; errEl.style.display = "block"; return; }
+
+      try {
+        // Check code against Firestore
+        const codesSnap = await getDocs(collection(db,"accessCodes"));
+        let matched = null;
+        codesSnap.forEach(d => {
+          const data = d.data();
+          if (data.code?.toUpperCase() === raw && data.active !== false) {
+            matched = data;
+          }
+        });
+
+        if (!matched) {
+          errEl.textContent = "Invalid code. Please check and try again.";
+          errEl.style.display = "block";
+          return;
+        }
+
+        // Unlock the course
+        const courseId = matched.course; // e.g. "academy", "certification", "trivia"
+        const lockedKey = `${courseId}Locked`;
+        await setDoc(doc(db,"users",currentUser.uid), {[lockedKey]: false}, {merge:true});
+        userProfile[lockedKey] = false;
+
+        successEl.textContent = `✓ Access granted! The ${matched.courseName || courseId} course is now unlocked.`;
+        successEl.style.display = "block";
+        document.getElementById("access-code-input").value = "";
+        renderCourses();
+        showToast("Course unlocked!", "success");
+      } catch(e) {
+        errEl.textContent = "Error checking code. Please try again.";
+        errEl.style.display = "block";
+      }
+    };
+  </script>
+</body>
+</html>
