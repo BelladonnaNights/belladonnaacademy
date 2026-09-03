@@ -483,10 +483,11 @@
 
       let html = "";
 
-      // Preview button for admins
-      if (isPreview) {
-        html += `<div style="margin-bottom:1rem;"><a href="admin.html" class="btn btn-ghost btn-sm">← Back to admin</a></div>`;
-      }
+      // Navigation buttons
+      html += `<div style="margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <a href="dashboard.html" class="btn btn-ghost btn-sm">← Dashboard</a>
+        ${isPreview ? '<a href="admin.html" class="btn btn-ghost btn-sm">← Back to admin</a>' : ''}
+      </div>`;
 
       html += `<p style="font-family:var(--cinzel);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;font-style:normal;">Module ${allModules.indexOf(mod)+1}</p>`;
       html += `<h1 class="gold-text" style="margin-bottom:1rem;">${mod.title||""}</h1>`;
@@ -598,10 +599,12 @@
 
       let html = "";
 
-      // Preview back button for admins
-      if (isPreview) {
-        html += `<div style="margin-bottom:1rem;"><a href="admin.html" class="btn btn-ghost btn-sm">← Back to admin</a></div>`;
-      }
+      // Navigation buttons
+      html += `<div style="margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <a href="dashboard.html" class="btn btn-ghost btn-sm">← Dashboard</a>
+        <button class="btn btn-ghost btn-sm" onclick="showModuleIntro('${moduleId}')">← ${mod?.title||'Module'}</button>
+        ${isPreview ? '<a href="admin.html" class="btn btn-ghost btn-sm">← Admin</a>' : ''}
+      </div>`;
 
       html += `<p style="font-family:var(--cinzel);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;font-style:normal;">${sub.order||""}</p>`;
       html += `<h1 class="gold-text" style="margin-bottom:1rem;">${sub.title||""}</h1>`;
