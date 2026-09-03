@@ -169,9 +169,20 @@
       <div class="content-layout" id="content-layout">
         <!-- Content sidebar -->
         <div class="content-sidebar" id="content-sidebar">
-          <div class="cs-header">
-            <span class="cs-label">Modules</span>
-            <button class="cs-add-btn" title="Add new module" onclick="addModule()">+</button>
+          <div class="cs-header" style="flex-direction:column;align-items:stretch;gap:8px;padding:10px 12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span class="cs-label">Course</span>
+              <button class="cs-add-btn" title="Add new module" onclick="addModule()">+</button>
+            </div>
+            <select id="course-selector" onchange="selectCourse(this.value)"
+              style="background:var(--surface2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:6px 10px;color:var(--gold2);font-family:var(--cinzel);font-size:10px;letter-spacing:.06em;width:100%;cursor:pointer;">
+              <option value="academy">Belladonna Academy</option>
+              <option value="certification">Host Certification</option>
+              <option value="trivia">Trivia Time Transfer</option>
+            </select>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px;">
+              <span class="cs-label">Modules</span>
+            </div>
           </div>
           <div id="cs-module-list"></div>
         </div>
@@ -287,8 +298,11 @@
     let allTrainees=[], certMap={}, progressMap={};
     let currentPreviewModuleId = null; // tracks which module to preview
 
+    // Current course being edited
+    let currentCourse = "academy"; // default
+
     // All modules data (array, ordered)
-    let modulesData = []; // [{id, title, description, content, bannerImage, passingScore, totalQuestions, order, submodules:[], videos:[], questions:[], _open:bool}]
+    let modulesData = [];
     let activeModuleIdx = null;
     let activeSubmoduleIdx = null; // null = editing parent module
     let activeView = null; // 'module' | 'submodule'
@@ -312,17 +326,49 @@
     });
 
     // ── Load all modules ──────────────────────────────────────────────────────
+    window.selectCourse = function(courseId) {
+      currentCourse = courseId;
+      modulesData = [];
+      activeModuleIdx = null;
+      activeSubmoduleIdx = null;
+      activeView = null;
+      document.getElementById("editor-panel").innerHTML = `<div class="empty-editor"><div style="font-size:2rem;">✦</div><p>Select a module or sub-module<br>from the sidebar to edit.</p></div>`;
+      loadAllModules();
+    };
+
+    function getModulesCollection() {
+      // New structure: courses/{courseId}/modules
+      // Fall back to legacy flat "modules" collection for academy (backwards compat)
+      if (currentCourse === "academy") {
+        return collection(db,"modules"); // legacy — existing academy modules stay here
+      }
+      return collection(db,"courses",currentCourse,"modules");
+    }
+
+    function getModuleDocRef(moduleId) {
+      if (currentCourse === "academy") {
+        return doc(db,"modules",moduleId);
+      }
+      return doc(db,"courses",currentCourse,"modules",moduleId);
+    }
+
+    function getSubcollectionRef(moduleId, subcoll) {
+      if (currentCourse === "academy") {
+        return collection(db,"modules",moduleId,subcoll);
+      }
+      return collection(db,"courses",currentCourse,"modules",moduleId,subcoll);
+    }
+
     async function loadAllModules() {
       const panel = document.getElementById("cs-module-list");
       panel.innerHTML=`<div style="padding:1rem;text-align:center;"><div class="spinner" style="width:20px;height:20px;border-width:2px;margin:0 auto;"></div></div>`;
       
-      // Try ordered fetch first, fall back to unordered if no order field exists
       let snap;
       try {
-        snap = await getDocs(query(collection(db,"modules"),orderBy("order")));
+        snap = await getDocs(query(getModulesCollection(),orderBy("order")));
         if (snap.empty) throw new Error("empty ordered");
       } catch(e) {
-        snap = await getDocs(collection(db,"modules"));
+        snap = await getDocs(getModulesCollection());
       }
 
       let docs = snap.docs.map(d => ({id:d.id,...d.data()}));
@@ -343,9 +389,9 @@
 
     async function loadModuleSubdata(m) {
       const [vidSnap,queSnap,subSnap] = await Promise.all([
-        getDocs(query(collection(db,"modules",m.id,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
-        getDocs(query(collection(db,"modules",m.id,"questions"),orderBy("order"))).catch(()=>({docs:[]})),
-        getDocs(query(collection(db,"modules",m.id,"submodules"),orderBy("order"))).catch(()=>({docs:[]})),
+        getDocs(query(getSubcollectionRef(m.id,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
+        getDocs(query(getSubcollectionRef(m.id,"questions"),orderBy("order"))).catch(()=>({docs:[]})),
+        getDocs(query(getSubcollectionRef(m.id,"submodules"),orderBy("order"))).catch(()=>({docs:[]})),
       ]);
       m.videos = vidSnap.docs.map(d=>({id:d.id,...d.data()}));
       m.questions = queSnap.docs.map(d=>({id:d.id,...d.data()}));
@@ -555,17 +601,17 @@
       if (!mod._new) {
         // Delete from Firestore
         try {
-          const subSnap = await getDocs(collection(db,"modules",mod.id,"submodules"));
+          const subSnap = await getDocs(getSubmoduleCollRef(mod.id));
           for (const sd of subSnap.docs) {
             const svSnap=await getDocs(collection(db,"modules",mod.id,"submodules",sd.id,"videos"));
             const siSnap=await getDocs(collection(db,"modules",mod.id,"submodules",sd.id,"images"));
             await Promise.all([...svSnap.docs,...siSnap.docs].map(d=>deleteDoc(d.ref)));
             await deleteDoc(sd.ref);
           }
-          const vidSnap=await getDocs(collection(db,"modules",mod.id,"videos"));
-          const queSnap=await getDocs(collection(db,"modules",mod.id,"questions"));
+          const vidSnap=await getDocs(getSubcollectionRef(mod.id,"videos"));
+          const queSnap=await getDocs(getSubcollectionRef(mod.id,"questions"));
           await Promise.all([...vidSnap.docs,...queSnap.docs].map(d=>deleteDoc(d.ref)));
-          await deleteDoc(doc(db,"modules",mod.id));
+          await deleteDoc(getModuleDocRef(mod.id));
         } catch(e){ showToast("Error deleting from database.","error"); return; }
       }
       modulesData.splice(mi,1);
@@ -604,7 +650,7 @@
           const svSnap=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"videos"));
           const siSnap=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"images"));
           await Promise.all([...svSnap.docs,...siSnap.docs].map(d=>deleteDoc(d.ref)));
-          await deleteDoc(doc(db,"modules",mod.id,"submodules",sub.id));
+          await deleteDoc(getSubmoduleDocRef(mod.id,sub.id));
         } catch(e){ showToast("Error deleting.","error"); return; }
       }
       modulesData[mi].submodules.splice(si,1);
@@ -1080,7 +1126,7 @@
         // Save this module only (not all modules — avoids overwriting others with bad data)
         const modContent = (mod.contentBlocks||[]).map(b=>b.text||"").filter(t=>t).join("\n\n");
         const isQuizMod = mod.moduleType === "quiz";
-        await setDoc(doc(db,"modules",mod.id),{
+        await setDoc(getModuleDocRef(mod.id),{
           id:mod.id,
           order:mi+1,
           title:mod.title||"",
@@ -1095,18 +1141,18 @@
         // Also update the order field on all other modules so ordering persists
         await Promise.all(modulesData.filter((_,i)=>i!==mi).map((m,_)=>{
           const idx = modulesData.indexOf(m);
-          return setDoc(doc(db,"modules",m.id),{order:idx+1},{merge:true});
+          return setDoc(getModuleDocRef(m.id),{order:idx+1},{merge:true});
         }));
 
         // Save videos
-        const oldVids=await getDocs(collection(db,"modules",mod.id,"videos"));
+        const oldVids=await getDocs(getSubcollectionRef(mod.id,"videos"));
         await Promise.all(oldVids.docs.map(d=>deleteDoc(d.ref)));
-        await Promise.all(mod.videos.map((v,i)=>setDoc(doc(db,"modules",mod.id,"videos",v.id||`video_${i+1}`),{id:v.id||`video_${i+1}`,order:i+1,title:v.title||"",youtubeId:v.youtubeId||""})));
+        await Promise.all(mod.videos.map((v,i)=>setDoc(doc(getSubcollectionRef(mod.id,"videos"),v.id||`video_${i+1}`),{id:v.id||`video_${i+1}`,order:i+1,title:v.title||"",youtubeId:v.youtubeId||""})));
 
         // Save questions
-        const oldQues=await getDocs(collection(db,"modules",mod.id,"questions"));
+        const oldQues=await getDocs(getSubcollectionRef(mod.id,"questions"));
         await Promise.all(oldQues.docs.map(d=>deleteDoc(d.ref)));
-        await Promise.all(mod.questions.map((q,i)=>setDoc(doc(db,"modules",mod.id,"questions",q.id||`q${i+1}`),{order:i+1,question:q.question||"",options:q.options||["","","",""],correctIndex:q.correctIndex||0})));
+        await Promise.all(mod.questions.map((q,i)=>setDoc(doc(getSubcollectionRef(mod.id,"questions"),q.id||`q${i+1}`),{order:i+1,question:q.question||"",options:q.options||["","","",""],correctIndex:q.correctIndex||0})));
 
         mod._new=false;
         renderSidebar();
@@ -1117,6 +1163,15 @@
     };
 
     // ── Save submodule ────────────────────────────────────────────────────────
+    function getSubmoduleCollRef(moduleId) {
+      if (currentCourse === "academy") return collection(db,"modules",moduleId,"submodules");
+      return collection(db,"courses",currentCourse,"modules",moduleId,"submodules");
+    }
+    function getSubmoduleDocRef(moduleId, subId) {
+      if (currentCourse === "academy") return doc(db,"modules",moduleId,"submodules",subId);
+      return doc(db,"courses",currentCourse,"modules",moduleId,"submodules",subId);
+    }
+
     window.saveSubmodule = async function(mi, si, silent=false) {
       const btn=document.getElementById("save-sub-btn");
       if (btn) { btn.textContent="Saving..."; btn.disabled=true; }
@@ -1138,7 +1193,7 @@
         }).filter(Boolean);
         const blocksJson = JSON.stringify(cleanBlocks);
 
-        await setDoc(doc(db,"modules",mod.id,"submodules",sub.id),{
+        await setDoc(getSubmoduleDocRef(mod.id,sub.id),{
           id:sub.id, order:sub.order||`${mi+1}.${si+1}`, title:sub.title||"",
           description:sub.description||"", bannerImage:sub.bannerImage||"",
           blocksJson
@@ -1147,13 +1202,13 @@
         // Also save separate video/image subcollections for the trainee page (backwards compat)
         const videoBlocks = cleanBlocks.filter(b=>b.type==="video");
         const imageBlocks = cleanBlocks.filter(b=>b.type==="image");
-        const oldSV=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"videos"));
+        const oldSV=await getDocs(collection(getSubmoduleDocRef(mod.id,sub.id),"videos"));
         await Promise.all(oldSV.docs.map(d=>deleteDoc(d.ref)));
-        await Promise.all(videoBlocks.map((v,i)=>setDoc(doc(db,"modules",mod.id,"submodules",sub.id,"videos",`sv_${i+1}`),{id:`sv_${i+1}`,order:i+1,title:v.title||"",youtubeId:v.youtubeId||""})));
+        await Promise.all(videoBlocks.map((v,i)=>setDoc(doc(collection(getSubmoduleDocRef(mod.id,sub.id),"videos"),`sv_${i+1}`),{id:`sv_${i+1}`,order:i+1,title:v.title||"",youtubeId:v.youtubeId||""})));
 
-        const oldSI=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"images"));
+        const oldSI=await getDocs(collection(getSubmoduleDocRef(mod.id,sub.id),"images"));
         await Promise.all(oldSI.docs.map(d=>deleteDoc(d.ref)));
-        await Promise.all(imageBlocks.map((img,i)=>setDoc(doc(db,"modules",mod.id,"submodules",sub.id,"images",`img_${i+1}`),{id:`img_${i+1}`,order:i+1,url:img.url||"",caption:img.caption||""})));
+        await Promise.all(imageBlocks.map((img,i)=>setDoc(doc(collection(getSubmoduleDocRef(mod.id,sub.id),"images"),`img_${i+1}`),{id:`img_${i+1}`,order:i+1,url:img.url||"",caption:img.caption||""})));
 
         // Save subsections (sub-sub-modules)
         const oldSS=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"subsections"));
@@ -1376,11 +1431,17 @@
       return `<div class="detail-grid"><div class="detail-card"><div class="detail-card-label">Quiz Progress</div>${qr}</div>${pwCard}${accessCard}${profileCard}<div class="detail-card">
           <div class="detail-card-label">Field Sign-offs</div>
           ${SIGNOFF_STEPS.map(step=>{const done=cert[step.key],dv=cert[step.dateKey];const ds=dv?new Date(dv.seconds*1000).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"";return `<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+            <div style="margin-bottom:4px;">
               <span style="font-family:var(--cinzel);font-size:11px;font-weight:600;color:var(--text2);">${step.label}</span>
-              ${done?`<span class="badge badge-pass" style="font-size:9px;">✓${ds?" "+ds:""}</span>`:`<span class="badge badge-locked" style="font-size:9px;">Pending</span>`}
             </div>
-            ${done?`<button class="btn btn-ghost btn-sm" style="font-size:10px;" onclick="handleRevoke('${trainee.id}','${step.key}','${step.dateKey}')">Revoke</button>`:`<button class="btn btn-primary btn-sm" style="font-size:10px;" onclick="handleSignOff('${trainee.id}','${step.key}','${step.dateKey}')">Sign Off ✓</button>`}
+            <div style="margin-bottom:6px;">
+              ${done
+                ? `<span class="badge badge-pass" style="font-size:9px;">✓${ds?" · "+ds:""}</span>`
+                : `<span class="badge badge-locked" style="font-size:9px;">Pending</span>`}
+            </div>
+            ${done
+              ? `<button class="btn btn-ghost btn-sm" style="font-size:10px;" onclick="handleRevoke('${trainee.id}','${step.key}','${step.dateKey}')">Revoke</button>`
+              : `<button class="btn btn-primary btn-sm" style="font-size:10px;" onclick="handleSignOff('${trainee.id}','${step.key}','${step.dateKey}')">Sign Off ✓</button>`}
           </div>`;}).join("")}
         </div></div>`;
     }
