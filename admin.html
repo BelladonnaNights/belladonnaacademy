@@ -21,8 +21,8 @@
     .trainee-header.expanded{background:var(--surface2);border-left:2px solid var(--gold-border);}
     .trainee-detail{padding:1rem 1.5rem 1.25rem;background:var(--surface2);border-top:1px solid var(--border);display:none;}
     .trainee-detail.open{display:block;}
-    .detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:12px;}
-    .detail-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;}
+    .detail-grid{display:flex;flex-wrap:nowrap;gap:12px;overflow-x:auto;align-items:flex-start;padding-bottom:6px;}
+    .detail-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;flex-shrink:0;min-width:210px;max-width:290px;}
     .detail-card-label{font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
     .quiz-line{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);}
     .quiz-line:last-child{border-bottom:none;}
@@ -115,7 +115,7 @@
       .page-wrap-wide{padding:0.75rem !important;}
       .form-row{grid-template-columns:1fr !important;}
       .trainee-header{padding:0.75rem 1rem !important;gap:0.75rem !important;}
-      .detail-grid{grid-template-columns:1fr !important;}
+      .detail-grid{overflow-x:auto;}
       .tabs{overflow-x:auto;}
       .tab{padding:10px 14px;font-size:9px;}
       .cs-mod-row{padding:8px;}
@@ -263,27 +263,32 @@
       </div>
 
       <!-- Course Blurbs -->
-      <div class="card fade-up" style="animation-delay:.1s;">
-        <h3 style="font-family:var(--cinzel);font-size:14px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">Course Page Text</h3>
-        <p style="font-size:13px;color:var(--text3);margin-bottom:1.5rem;">Edit the taglines and descriptions shown on the course selection page.</p>
-
-        ${['certification','academy','trivia'].map(id => `
-          <div style="margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);">
-            <div style="font-family:var(--cinzel);font-size:12px;letter-spacing:.06em;font-weight:600;margin-bottom:10px;color:var(--gold2);">
-              ${{certification:'Host Certification',academy:'Belladonna Academy',trivia:'Trivia Time Transfer'}[id]}
-            </div>
-            <div style="margin-bottom:8px;">
-              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px;">Short tagline (on card)</label>
-              <input type="text" id="tagline-${id}" class="input-std" placeholder="One-line tagline..."/>
-            </div>
-            <div>
-              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px;">Longer blurb ("which one is for you" section)</label>
-              <textarea id="blurb-${id}" class="textarea-std" rows="3" placeholder="Longer description..."></textarea>
-            </div>
-          </div>`).join('')}
-
-        <div id="blurb-save-status" style="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;color:var(--text3);margin-bottom:10px;"></div>
-        <button class="btn btn-primary" onclick="saveBlurbs()">Save Course Text</button>
+      <div class="card fade-up" style="animation-delay:.1s;padding:0;overflow:hidden;">
+        <div style="padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <div>
+            <h3 style="font-family:var(--cinzel);font-size:14px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">Course Selection Page</h3>
+            <p style="font-size:13px;color:var(--text3);">Edit what trainees see when they log in — banner images, taglines, descriptions, and display order.</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span id="blurb-save-status" style="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;color:var(--text3);"></span>
+            <button class="btn btn-primary btn-sm" onclick="saveBlurbs()">Save Page</button>
+          </div>
+        </div>
+        <div style="background:var(--bg);padding:1.5rem;">
+          <div style="margin-bottom:1.5rem;">
+            <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px;">Page heading</label>
+            <input id="page-heading" type="text" class="input-std" placeholder="Your Courses"/>
+            <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-top:10px;margin-bottom:4px;">Page subheading</label>
+            <input id="page-subheading" type="text" class="input-std" placeholder="Select a course below to continue your training."/>
+          </div>
+          <div id="course-cards-editor">
+            <div style="text-align:center;padding:2rem;color:var(--text3);font-family:var(--serif);font-style:italic;">Loading course editor...</div>
+          </div>
+          <div style="border-top:1px solid var(--border);padding-top:1.25rem;margin-top:1.25rem;">
+            <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px;">"Not sure which?" section title</label>
+            <input id="which-section-title" type="text" class="input-std" placeholder="Not sure which course is right for you?"/>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1175,58 +1180,15 @@
           header.appendChild(spacer); header.appendChild(delBtn);
           div.appendChild(header);
 
-          // Rich text toolbar
-          const toolbar = document.createElement("div");
-          toolbar.style.cssText="display:flex;gap:4px;flex-wrap:wrap;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;";
-          const toolbarBtns = [
-            {cmd:"bold",       label:"<b>B</b>"},
-            {cmd:"italic",     label:"<i>I</i>"},
-            {cmd:"underline",  label:"<u>U</u>"},
-            {cmd:"strikethrough", label:"<s>S</s>"},
-            {cmd:"insertUnorderedList", label:"• List"},
-            {cmd:"insertOrderedList",   label:"1. List"},
-            {cmd:"indent",     label:"→"},
-            {cmd:"outdent",    label:"←"},
-            {sep:true},
-            {cmd:"formatBlock", val:"h2", label:"H2"},
-            {cmd:"formatBlock", val:"h3", label:"H3"},
-            {cmd:"formatBlock", val:"p",  label:"¶"},
-            {sep:true},
-            {cmd:"fontSize", val:"1", label:"A-"},
-            {cmd:"fontSize", val:"4", label:"A+"},
-            {cmd:"removeFormat", label:"✕ fmt"},
-          ];
-          toolbarBtns.forEach(btn => {
-            if (btn.sep) {
-              const sep = document.createElement("span");
-              sep.style.cssText="width:1px;background:var(--border2);margin:2px 4px;align-self:stretch;";
-              toolbar.appendChild(sep);
-              return;
-            }
-            const b = document.createElement("button");
-            b.innerHTML = btn.label;
-            b.title = btn.cmd;
-            b.style.cssText="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;cursor:pointer;font-size:12px;color:var(--text);min-width:28px;";
-            b.onmousedown = (e) => {
-              e.preventDefault(); // keep focus in editor
-              if (btn.val) document.execCommand(btn.cmd, false, btn.val);
-              else document.execCommand(btn.cmd, false, null);
-            };
-            toolbar.appendChild(b);
-          });
-          div.appendChild(toolbar);
-
-          // Editable content area
-          const editor = document.createElement("div");
-          editor.contentEditable = "true";
-          editor.innerHTML = block.text||"";
-          editor.style.cssText="background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);padding:10px 14px;color:var(--text);font-family:var(--font);font-size:14px;min-height:80px;line-height:1.7;outline:none;";
-          editor.addEventListener("input",()=>{ blocks[bi].text=editor.innerHTML; });
-          editor.addEventListener("focus",()=>{ editor.style.borderColor="var(--gold)"; toolbar.style.borderColor="var(--gold)"; });
-          editor.addEventListener("blur",()=>{ editor.style.borderColor="var(--border)"; toolbar.style.borderColor="var(--border)"; });
-          // Allow text selection without triggering drag
-          editor.addEventListener("mousedown", e=>e.stopPropagation());
-          div.appendChild(editor);
+          const ta = document.createElement("textarea");
+          ta.placeholder = "Write content here...";
+          ta.value = block.text || "";
+          ta.className = "textarea-std";
+          ta.style.minHeight = "120px";
+          ta.style.resize = "vertical";
+          ta.addEventListener("input", () => { blocks[bi].text = ta.value; });
+          ta.addEventListener("mousedown", e => e.stopPropagation());
+          div.appendChild(ta);
         }
 
         else if (block.type === "image") {
@@ -2049,36 +2011,93 @@
       } catch(e) { showToast("Failed: "+e.message,"error"); }
     };
 
+    const COURSE_EDITOR_DEFS = [
+      {id:"certification", name:"Host Certification",  emoji:"🎤"},
+      {id:"academy",       name:"Belladonna Academy",   emoji:"✦"},
+      {id:"trivia",        name:"Trivia Time Transfer", emoji:"❓"},
+    ];
+
+    function renderCourseCardsEditor(data) {
+      const container = document.getElementById("course-cards-editor");
+      if (!container) return;
+      container.innerHTML = "";
+      COURSE_EDITOR_DEFS.forEach(course => {
+        const card = document.createElement("div");
+        card.style.cssText = "background:var(--surface);border:1px solid var(--gold-border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden;";
+        card.innerHTML = `
+          <div style="background:var(--surface2);padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);">
+            <span style="font-size:18px;">${course.emoji}</span>
+            <div style="font-family:var(--cinzel);font-size:12px;font-weight:600;color:var(--gold2);">${course.name}</div>
+          </div>
+          <div style="padding:1rem;display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px;">Banner image URL</label>
+              <input type="text" id="banner-${course.id}" class="input-std" value="${data[course.id+'Banner']||''}" placeholder="https://..."/>
+              <div id="banner-preview-${course.id}" style="margin-top:6px;${data[course.id+'Banner']?'':'display:none;'}">
+                ${data[course.id+'Banner'] ? `<img src="${data[course.id+'Banner']}" style="width:100%;height:70px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border);"/>` : ''}
+              </div>
+            </div>
+            <div>
+              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px;">Short tagline (on card)</label>
+              <input type="text" id="tagline-${course.id}" class="input-std" value="${data[course.id+'Tagline']||''}" placeholder="One-line description..."/>
+            </div>
+            <div>
+              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px;">Longer blurb ("which one is for you" section)</label>
+              <textarea id="blurb-${course.id}" class="textarea-std" rows="3" placeholder="Who this is for and what they'll get...">${data[course.id+'Blurb']||''}</textarea>
+            </div>
+            <div>
+              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px;">Display order (1 = first)</label>
+              <input type="number" id="order-${course.id}" class="input-std" value="${data[course.id+'Order']||COURSE_EDITOR_DEFS.indexOf(course)+1}" min="1" max="10" style="width:80px;"/>
+            </div>
+          </div>`;
+        // Banner live preview
+        const bannerIn = card.querySelector(`#banner-${course.id}`);
+        const bannerPrev = card.querySelector(`#banner-preview-${course.id}`);
+        bannerIn.addEventListener("input", function() {
+          if (this.value) {
+            bannerPrev.style.display = "block";
+            bannerPrev.innerHTML = `<img src="${this.value}" style="width:100%;height:70px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border);"/>`;
+          } else { bannerPrev.style.display = "none"; bannerPrev.innerHTML = ""; }
+        });
+        container.appendChild(card);
+      });
+    }
+
     async function loadBlurbs() {
       try {
         const snap = await getDoc(doc(db,"settings","courses"));
         const data = snap.exists() ? snap.data() : {};
-        const fields = ["certification","academy","trivia"];
-        fields.forEach(id => {
-          const tEl = document.getElementById(`tagline-${id}`);
-          const bEl = document.getElementById(`blurb-${id}`);
-          if (tEl) tEl.value = data[`${id}Tagline`]||"";
-          if (bEl) bEl.value = data[`${id}Blurb`]||"";
-        });
+        const hEl = document.getElementById("page-heading");
+        const sEl = document.getElementById("page-subheading");
+        const wEl = document.getElementById("which-section-title");
+        if (hEl) hEl.value = data.pageHeading||"";
+        if (sEl) sEl.value = data.pageSubheading||"";
+        if (wEl) wEl.value = data.whichSectionTitle||"";
+        renderCourseCardsEditor(data);
       } catch(e) { console.error("loadBlurbs:",e); }
     }
 
     window.saveBlurbs = async function() {
       const statusEl = document.getElementById("blurb-save-status");
       statusEl.textContent = "Saving..."; statusEl.style.color="var(--text3)";
-      const fields = ["certification","academy","trivia"];
-      const data = {};
-      fields.forEach(id => {
-        data[`${id}Tagline`] = document.getElementById(`tagline-${id}`)?.value.trim()||"";
-        data[`${id}Blurb`] = document.getElementById(`blurb-${id}`)?.value.trim()||"";
+      const data = {
+        pageHeading: document.getElementById("page-heading")?.value.trim()||"",
+        pageSubheading: document.getElementById("page-subheading")?.value.trim()||"",
+        whichSectionTitle: document.getElementById("which-section-title")?.value.trim()||"",
+      };
+      COURSE_EDITOR_DEFS.forEach((course,i) => {
+        data[`${course.id}Banner`]  = document.getElementById(`banner-${course.id}`)?.value.trim()||"";
+        data[`${course.id}Tagline`] = document.getElementById(`tagline-${course.id}`)?.value.trim()||"";
+        data[`${course.id}Blurb`]   = document.getElementById(`blurb-${course.id}`)?.value.trim()||"";
+        data[`${course.id}Order`]   = parseInt(document.getElementById(`order-${course.id}`)?.value)||i+1;
       });
       try {
         await setDoc(doc(db,"settings","courses"), data, {merge:true});
         statusEl.textContent = "✓ Saved"; statusEl.style.color="var(--success)";
-        showToast("Course text saved.","success");
-        setTimeout(()=>statusEl.textContent="",3000);
+        showToast("Course page saved.","success");
+        setTimeout(()=>{ statusEl.textContent=""; },3000);
       } catch(e) {
-        statusEl.textContent = "Save failed: "+e.message; statusEl.style.color="var(--danger)";
+        statusEl.textContent = "Failed: "+e.message; statusEl.style.color="var(--danger)";
       }
     };
 
