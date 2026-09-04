@@ -86,7 +86,7 @@
     .editor-section-header{padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
     .editor-section-title{font-family:var(--cinzel);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);}
     .editor-section-body{padding:1rem;}
-    .item-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;display:flex;gap:8px;align-items:flex-start;}
+    .item-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;display:flex;gap:8px;align-items:flex-start;width:100%;box-sizing:border-box;}
     .item-card.dragging{opacity:.4;}
     .item-fields{flex:1;display:flex;flex-direction:column;gap:6px;}
     .drag-handle{cursor:grab;color:var(--text3);padding:4px;font-size:14px;flex-shrink:0;user-select:none;}
@@ -1186,41 +1186,49 @@
           typeTag.style.color = "var(--text3)";
           header.appendChild(handle); header.appendChild(typeTag);
           const spacer = document.createElement("div"); spacer.style.flex="1";
-          const fmtHint = document.createElement("span");
-          fmtHint.style.cssText = "font-size:10px;color:var(--text3);font-family:var(--font);";
-          fmtHint.textContent = "Cmd+B bold · Cmd+I italic";
-          header.appendChild(fmtHint);
           header.appendChild(spacer); header.appendChild(delBtn);
           div.appendChild(header);
 
-          // contenteditable — browser handles all formatting natively
-          // Bold: Cmd+B, Italic: Cmd+I, Underline: Cmd+U
-          // Right-click gives format options on some browsers
+          // Formatting toolbar
+          const toolbar = document.createElement("div");
+          toolbar.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;padding:5px 6px;background:var(--surface2);border:1px solid var(--border);border-bottom:none;border-radius:var(--radius) var(--radius) 0 0;";
+          const fmtBtns = [
+            {label:"B",  title:"Bold",       style:"font-weight:700;", cmd:"bold"},
+            {label:"I",  title:"Italic",     style:"font-style:italic;", cmd:"italic"},
+            {label:"U",  title:"Underline",  style:"text-decoration:underline;", cmd:"underline"},
+            {label:"S",  title:"Strikethrough", style:"text-decoration:line-through;", cmd:"strikeThrough"},
+            {label:"A+", title:"Bigger",     style:"", cmd:"fontSize", val:"5"},
+            {label:"A−", title:"Smaller",    style:"", cmd:"fontSize", val:"2"},
+            {label:"•",  title:"Bullet list",style:"", cmd:"insertUnorderedList"},
+            {label:"1.", title:"Numbered list",style:"",cmd:"insertOrderedList"},
+            {label:"↶",  title:"Undo",       style:"", cmd:"undo"},
+            {label:"↷",  title:"Redo",       style:"", cmd:"redo"},
+            {label:"✕",  title:"Clear format",style:"font-size:10px;", cmd:"removeFormat"},
+          ];
+          fmtBtns.forEach(btn => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.title = btn.title;
+            b.innerHTML = `<span style="${btn.style}">${btn.label}</span>`;
+            b.style.cssText = "background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:2px 7px;cursor:pointer;font-size:12px;color:var(--text);min-width:28px;line-height:1.4;";
+            b.addEventListener("mousedown", e => {
+              e.preventDefault(); // keep focus in editor
+              editor.focus();
+              document.execCommand(btn.cmd, false, btn.val || null);
+              blocks[bi].text = editor.innerHTML;
+            });
+            toolbar.appendChild(b);
+          });
+          div.appendChild(toolbar);
+
+          // Editable content area
           const editor = document.createElement("div");
           editor.contentEditable = "true";
           editor.innerHTML = block.text || "";
-          editor.style.cssText = [
-            "background:var(--surface)",
-            "border:1px solid var(--gold-border)",
-            "border-radius:var(--radius)",
-            "padding:10px 14px",
-            "color:var(--text)",
-            "font-family:var(--font)",
-            "font-size:14px",
-            "min-height:120px",
-            "line-height:1.7",
-            "outline:none",
-            "resize:vertical",
-            "overflow:auto",
-            "white-space:pre-wrap",
-            "cursor:text",
-            "user-select:text",
-            "-webkit-user-select:text",
-          ].join(";");
+          editor.style.cssText = "width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--gold-border);border-radius:0 0 var(--radius) var(--radius);padding:10px 14px;color:var(--text);font-family:var(--font);font-size:14px;min-height:120px;line-height:1.7;outline:none;overflow:auto;white-space:pre-wrap;cursor:text;user-select:text;-webkit-user-select:text;";
           editor.addEventListener("input", () => { blocks[bi].text = editor.innerHTML; });
-          editor.addEventListener("focus", () => { editor.style.borderColor = "var(--gold)"; });
-          editor.addEventListener("blur",  () => { editor.style.borderColor = "var(--gold-border)"; });
-          // Prevent the card from going draggable while editing
+          editor.addEventListener("focus", () => { editor.style.borderColor = "var(--gold)"; toolbar.style.borderColor = "var(--gold)"; });
+          editor.addEventListener("blur",  () => { editor.style.borderColor = "var(--gold-border)"; toolbar.style.borderColor = "var(--border)"; });
           editor.addEventListener("mousedown", e => { div.draggable = false; e.stopPropagation(); });
           div.appendChild(editor);
         }
