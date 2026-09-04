@@ -50,7 +50,7 @@
 
     /* Module rows in sidebar */
     .cs-mod{border-bottom:1px solid var(--border);}
-    .cs-mod-row{display:flex;align-items:center;gap:6px;padding:8px 10px;cursor:pointer;transition:background .15s;user-select:none;}
+    .cs-mod-row{display:flex;align-items:center;gap:6px;padding:8px 10px;cursor:pointer;transition:background .15s;}
     .cs-mod-row:hover{background:var(--surface2);}
     .cs-mod-row.active{background:var(--surface2);border-left:2px solid var(--gold);}
     .cs-mod-row.drag-over{background:var(--gold-dim);}
@@ -69,7 +69,7 @@
     /* Sub-module rows */
     .cs-sub-list{display:none;background:var(--bg);}
     .cs-sub-list.open{display:block;}
-    .cs-sub-row{display:flex;align-items:center;gap:6px;padding:7px 10px 7px 28px;cursor:pointer;transition:background .15s;border-bottom:1px solid var(--border);user-select:none;}
+    .cs-sub-row{display:flex;align-items:center;gap:6px;padding:7px 10px 7px 28px;cursor:pointer;transition:background .15s;border-bottom:1px solid var(--border);}
     .cs-sub-row:last-child{border-bottom:none;}
     .cs-sub-row:hover{background:var(--surface2);}
     .cs-sub-row.active{background:var(--surface2);border-left:2px solid var(--gold-border);}
@@ -1127,6 +1127,14 @@
       setTimeout(()=>{ const l=document.getElementById("sub-blocks-list"); if(l) l.lastElementChild?.scrollIntoView({behavior:"smooth"}); }, 50);
     }
 
+    function updateImgPreview(div, url, scale) {
+      let prev = div.querySelector(".img-preview");
+      if (url) {
+        if (!prev) { prev=document.createElement("div"); prev.className="img-preview"; div.appendChild(prev); }
+        prev.innerHTML=`<img src="${url}" style="width:${scale||100}%;border-radius:var(--radius);border:1px solid var(--border);"/>`;
+      } else if (prev) { prev.remove(); }
+    }
+
     let subBlockDragSrc = null;
 
     function renderSubBlocks(mi, si) {
@@ -1166,9 +1174,59 @@
           const spacer = document.createElement("div"); spacer.style.flex="1";
           header.appendChild(spacer); header.appendChild(delBtn);
           div.appendChild(header);
-          const ta = makeEl("textarea","Write content here...",block.text||"",e=>blocks[bi].text=e.target.value,"textarea-std");
-          ta.style.minHeight="80px";
-          div.appendChild(ta);
+
+          // Rich text toolbar
+          const toolbar = document.createElement("div");
+          toolbar.style.cssText="display:flex;gap:4px;flex-wrap:wrap;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;";
+          const toolbarBtns = [
+            {cmd:"bold",       label:"<b>B</b>"},
+            {cmd:"italic",     label:"<i>I</i>"},
+            {cmd:"underline",  label:"<u>U</u>"},
+            {cmd:"strikethrough", label:"<s>S</s>"},
+            {cmd:"insertUnorderedList", label:"• List"},
+            {cmd:"insertOrderedList",   label:"1. List"},
+            {cmd:"indent",     label:"→"},
+            {cmd:"outdent",    label:"←"},
+            {sep:true},
+            {cmd:"formatBlock", val:"h2", label:"H2"},
+            {cmd:"formatBlock", val:"h3", label:"H3"},
+            {cmd:"formatBlock", val:"p",  label:"¶"},
+            {sep:true},
+            {cmd:"fontSize", val:"1", label:"A-"},
+            {cmd:"fontSize", val:"4", label:"A+"},
+            {cmd:"removeFormat", label:"✕ fmt"},
+          ];
+          toolbarBtns.forEach(btn => {
+            if (btn.sep) {
+              const sep = document.createElement("span");
+              sep.style.cssText="width:1px;background:var(--border2);margin:2px 4px;align-self:stretch;";
+              toolbar.appendChild(sep);
+              return;
+            }
+            const b = document.createElement("button");
+            b.innerHTML = btn.label;
+            b.title = btn.cmd;
+            b.style.cssText="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;cursor:pointer;font-size:12px;color:var(--text);min-width:28px;";
+            b.onmousedown = (e) => {
+              e.preventDefault(); // keep focus in editor
+              if (btn.val) document.execCommand(btn.cmd, false, btn.val);
+              else document.execCommand(btn.cmd, false, null);
+            };
+            toolbar.appendChild(b);
+          });
+          div.appendChild(toolbar);
+
+          // Editable content area
+          const editor = document.createElement("div");
+          editor.contentEditable = "true";
+          editor.innerHTML = block.text||"";
+          editor.style.cssText="background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);padding:10px 14px;color:var(--text);font-family:var(--font);font-size:14px;min-height:80px;line-height:1.7;outline:none;";
+          editor.addEventListener("input",()=>{ blocks[bi].text=editor.innerHTML; });
+          editor.addEventListener("focus",()=>{ editor.style.borderColor="var(--gold)"; toolbar.style.borderColor="var(--gold)"; });
+          editor.addEventListener("blur",()=>{ editor.style.borderColor="var(--border)"; toolbar.style.borderColor="var(--border)"; });
+          // Allow text selection without triggering drag
+          editor.addEventListener("mousedown", e=>e.stopPropagation());
+          div.appendChild(editor);
         }
 
         else if (block.type === "image") {
@@ -1181,13 +1239,35 @@
           div.appendChild(header);
           const urlIn = makeEl("input","Image URL (https://...)",block.url||"",e=>{
             blocks[bi].url=e.target.value;
-            let prev=div.querySelector(".img-preview");
-            if(e.target.value){if(!prev){prev=document.createElement("div");prev.className="img-preview";div.appendChild(prev);}prev.innerHTML=`<img src="${e.target.value}"/>`;}
-            else if(prev){prev.remove();}
+            updateImgPreview(div, e.target.value, block.scale||100);
           },"input-std");
           const capIn = makeEl("input","Caption (optional)",block.caption||"",e=>blocks[bi].caption=e.target.value,"input-std");
-          div.appendChild(urlIn); div.appendChild(capIn);
-          if(block.url){const prev=document.createElement("div");prev.className="img-preview";prev.innerHTML=`<img src="${block.url}"/>`;div.appendChild(prev);}
+
+          // Scale slider
+          const scaleWrap = document.createElement("div");
+          scaleWrap.style.cssText="display:flex;align-items:center;gap:10px;margin-top:4px;";
+          const scaleLabel = document.createElement("label");
+          scaleLabel.style.cssText="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);white-space:nowrap;";
+          scaleLabel.textContent="Width: "+(block.scale||100)+"%";
+          const scaleSlider = document.createElement("input");
+          scaleSlider.type="range"; scaleSlider.min="10"; scaleSlider.max="100";
+          scaleSlider.value=block.scale||100;
+          scaleSlider.style.cssText="flex:1;accent-color:var(--gold);";
+          scaleSlider.addEventListener("input",()=>{
+            blocks[bi].scale=parseInt(scaleSlider.value);
+            scaleLabel.textContent="Width: "+scaleSlider.value+"%";
+            const prev=div.querySelector(".img-preview img");
+            if(prev) prev.style.width=scaleSlider.value+"%";
+          });
+          scaleWrap.appendChild(scaleLabel); scaleWrap.appendChild(scaleSlider);
+
+          div.appendChild(urlIn); div.appendChild(capIn); div.appendChild(scaleWrap);
+          if(block.url){
+            const prev=document.createElement("div");prev.className="img-preview";
+            prev.style.textAlign=block.align||"left";
+            prev.innerHTML=`<img src="${block.url}" style="width:${block.scale||100}%;border-radius:var(--radius);border:1px solid var(--border);"/>`;
+            div.appendChild(prev);
+          }
         }
 
         else if (block.type === "video") {
@@ -1319,7 +1399,7 @@
         // Store blocks as JSON — preserves all content including newlines within blocks
         const cleanBlocks = blocks.map(b => {
           if (b.type==="text")  return {type:"text",  text:b.text||""};
-          if (b.type==="image") return {type:"image", url:b.url||"", caption:b.caption||""};
+          if (b.type==="image") return {type:"image", url:b.url||"", caption:b.caption||"", scale:b.scale||100};
           if (b.type==="video") return {type:"video", title:b.title||"", youtubeId:b.youtubeId||""};
           return null;
         }).filter(Boolean);
