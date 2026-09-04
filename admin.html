@@ -1141,6 +1141,7 @@
     }
 
     let subBlockDragSrc = null;
+    let subBlockDragBi = null;
 
     function renderSubBlocks(mi, si) {
       const list = document.getElementById("sub-blocks-list"); if(!list) return;
@@ -1156,7 +1157,8 @@
       blocks.forEach((block, bi) => {
         const div = document.createElement("div");
         div.className = "item-card";
-        div.draggable = true;
+        // NOT draggable by default — only handle triggers drag
+        div.draggable = false;
         div.dataset.bi = bi;
         div.style.cssText = "flex-direction:column;gap:8px;";
 
@@ -1164,7 +1166,14 @@
         const header = document.createElement("div");
         header.style.cssText = "display:flex;align-items:center;gap:8px;";
         const handle = document.createElement("div");
-        handle.className = "drag-handle"; handle.textContent = "⠿"; handle.title = "Drag to reorder";
+        handle.className = "drag-handle";
+        handle.textContent = "⠿";
+        handle.title = "Drag to reorder";
+        handle.style.cursor = "grab";
+        // Drag starts only from handle
+        handle.addEventListener("mousedown", () => { div.draggable = true; });
+        handle.addEventListener("mouseup",   () => { div.draggable = false; });
+
         const typeTag = document.createElement("span");
         typeTag.style.cssText = "font-family:var(--cinzel);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:4px;flex-shrink:0;";
         const delBtn = document.createElement("button");
@@ -1177,18 +1186,43 @@
           typeTag.style.color = "var(--text3)";
           header.appendChild(handle); header.appendChild(typeTag);
           const spacer = document.createElement("div"); spacer.style.flex="1";
+          const fmtHint = document.createElement("span");
+          fmtHint.style.cssText = "font-size:10px;color:var(--text3);font-family:var(--font);";
+          fmtHint.textContent = "Cmd+B bold · Cmd+I italic";
+          header.appendChild(fmtHint);
           header.appendChild(spacer); header.appendChild(delBtn);
           div.appendChild(header);
 
-          const ta = document.createElement("textarea");
-          ta.placeholder = "Write content here...";
-          ta.value = block.text || "";
-          ta.className = "textarea-std";
-          ta.style.minHeight = "120px";
-          ta.style.resize = "vertical";
-          ta.addEventListener("input", () => { blocks[bi].text = ta.value; });
-          ta.addEventListener("mousedown", e => e.stopPropagation());
-          div.appendChild(ta);
+          // contenteditable — browser handles all formatting natively
+          // Bold: Cmd+B, Italic: Cmd+I, Underline: Cmd+U
+          // Right-click gives format options on some browsers
+          const editor = document.createElement("div");
+          editor.contentEditable = "true";
+          editor.innerHTML = block.text || "";
+          editor.style.cssText = [
+            "background:var(--surface)",
+            "border:1px solid var(--gold-border)",
+            "border-radius:var(--radius)",
+            "padding:10px 14px",
+            "color:var(--text)",
+            "font-family:var(--font)",
+            "font-size:14px",
+            "min-height:120px",
+            "line-height:1.7",
+            "outline:none",
+            "resize:vertical",
+            "overflow:auto",
+            "white-space:pre-wrap",
+            "cursor:text",
+            "user-select:text",
+            "-webkit-user-select:text",
+          ].join(";");
+          editor.addEventListener("input", () => { blocks[bi].text = editor.innerHTML; });
+          editor.addEventListener("focus", () => { editor.style.borderColor = "var(--gold)"; });
+          editor.addEventListener("blur",  () => { editor.style.borderColor = "var(--gold-border)"; });
+          // Prevent the card from going draggable while editing
+          editor.addEventListener("mousedown", e => { div.draggable = false; e.stopPropagation(); });
+          div.appendChild(editor);
         }
 
         else if (block.type === "image") {
@@ -1201,33 +1235,40 @@
           div.appendChild(header);
           const urlIn = makeEl("input","Image URL (https://...)",block.url||"",e=>{
             blocks[bi].url=e.target.value;
-            updateImgPreview(div, e.target.value, block.scale||100);
+            updateImgPreview(div, e.target.value, blocks[bi].scale||100);
           },"input-std");
+          urlIn.addEventListener("mousedown", e => { div.draggable = false; });
           const capIn = makeEl("input","Caption (optional)",block.caption||"",e=>blocks[bi].caption=e.target.value,"input-std");
+          capIn.addEventListener("mousedown", e => { div.draggable = false; });
 
           // Scale slider
           const scaleWrap = document.createElement("div");
           scaleWrap.style.cssText="display:flex;align-items:center;gap:10px;margin-top:4px;";
           const scaleLabel = document.createElement("label");
-          scaleLabel.style.cssText="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);white-space:nowrap;";
+          scaleLabel.style.cssText="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);white-space:nowrap;min-width:80px;";
           scaleLabel.textContent="Width: "+(block.scale||100)+"%";
           const scaleSlider = document.createElement("input");
           scaleSlider.type="range"; scaleSlider.min="10"; scaleSlider.max="100";
           scaleSlider.value=block.scale||100;
-          scaleSlider.style.cssText="flex:1;accent-color:var(--gold);";
+          scaleSlider.style.cssText="flex:1;accent-color:var(--gold);cursor:pointer;";
+          scaleSlider.addEventListener("mousedown", e => { div.draggable = false; });
           scaleSlider.addEventListener("input",()=>{
-            blocks[bi].scale=parseInt(scaleSlider.value);
-            scaleLabel.textContent="Width: "+scaleSlider.value+"%";
+            const pct = parseInt(scaleSlider.value);
+            blocks[bi].scale = pct;
+            scaleLabel.textContent="Width: "+pct+"%";
             const prev=div.querySelector(".img-preview img");
-            if(prev) prev.style.width=scaleSlider.value+"%";
+            if(prev) prev.style.width=pct+"%";
+          });
+          scaleSlider.addEventListener("change",()=>{
+            // Trigger auto-save
+            markUnsaved();
           });
           scaleWrap.appendChild(scaleLabel); scaleWrap.appendChild(scaleSlider);
 
           div.appendChild(urlIn); div.appendChild(capIn); div.appendChild(scaleWrap);
           if(block.url){
             const prev=document.createElement("div");prev.className="img-preview";
-            prev.style.textAlign=block.align||"left";
-            prev.innerHTML=`<img src="${block.url}" style="width:${block.scale||100}%;border-radius:var(--radius);border:1px solid var(--border);"/>`;
+            prev.innerHTML=`<img src="${block.url}" style="width:${block.scale||100}%;border-radius:var(--radius);border:1px solid var(--border);display:block;"/>`;
             div.appendChild(prev);
           }
         }
@@ -1241,6 +1282,7 @@
           header.appendChild(spacer); header.appendChild(delBtn);
           div.appendChild(header);
           const titleIn = makeEl("input","Video title",block.title||"",e=>blocks[bi].title=e.target.value,"input-std");
+          titleIn.addEventListener("mousedown", e => { div.draggable = false; });
           const urlIn = makeEl("input","YouTube URL or video ID",block.youtubeId||"",e=>{
             let val=e.target.value.trim(); const m2=val.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/); if(m2)val=m2[1];
             blocks[bi].youtubeId=val;
@@ -1248,14 +1290,25 @@
             if(val.length>=11){if(!prev){prev=document.createElement("div");prev.className="youtube-preview";div.appendChild(prev);}prev.innerHTML=`<iframe src="https://www.youtube.com/embed/${val}?rel=0" allowfullscreen></iframe>`;}
             else if(prev){prev.remove();}
           },"input-std");
+          urlIn.addEventListener("mousedown", e => { div.draggable = false; });
           div.appendChild(titleIn); div.appendChild(urlIn);
           if(block.youtubeId){const prev=document.createElement("div");prev.className="youtube-preview";prev.innerHTML=`<iframe src="https://www.youtube.com/embed/${block.youtubeId}?rel=0" allowfullscreen></iframe>`;div.appendChild(prev);}
         }
 
-        // Drag events
-        div.addEventListener("dragstart", e=>{ subBlockDragSrc=div; div.style.opacity="0.4"; e.dataTransfer.effectAllowed="move"; });
-        div.addEventListener("dragend", ()=>{ div.style.opacity="1"; subBlockDragSrc=null; });
-        div.addEventListener("dragover", e=>{ e.preventDefault(); div.style.outline="1px solid var(--gold-border)"; });
+        // Drag events — only fire when draggable is true (set by handle mousedown)
+        div.addEventListener("dragstart", e=>{
+          if (!div.draggable) { e.preventDefault(); return; }
+          subBlockDragSrc=div;
+          subBlockDragBi=bi;
+          div.style.opacity="0.4";
+          e.dataTransfer.effectAllowed="move";
+        });
+        div.addEventListener("dragend", ()=>{
+          div.style.opacity="1";
+          div.draggable=false;
+          subBlockDragSrc=null;
+        });
+        div.addEventListener("dragover", e=>{ if(subBlockDragSrc) { e.preventDefault(); div.style.outline="1px solid var(--gold-border)"; } });
         div.addEventListener("dragleave", ()=>{ div.style.outline=""; });
         div.addEventListener("drop", e=>{
           e.preventDefault(); div.style.outline="";
