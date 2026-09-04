@@ -1,0 +1,2120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Belladonna Academy — Admin</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    /* ── Tabs ── */
+    .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:0;}
+    .tab{padding:12px 24px;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;font-family:var(--cinzel);cursor:pointer;border:none;background:transparent;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
+    .tab:hover{color:var(--text2);}
+    .tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+    .tab-panel{display:none;}
+    .tab-panel.active{display:block;}
+
+    /* ── Trainees ── */
+    .trainee-row{background:var(--surface);border-bottom:1px solid var(--border);}
+    .trainee-header{padding:1rem 1.5rem;display:flex;align-items:center;gap:1rem;cursor:pointer;transition:background .15s;}
+    .trainee-header:hover{background:var(--surface2);}
+    .trainee-header.expanded{background:var(--surface2);border-left:2px solid var(--gold-border);}
+    .trainee-detail{padding:1rem 1.5rem 1.25rem;background:var(--surface2);border-top:1px solid var(--border);display:none;}
+    .trainee-detail.open{display:block;}
+    .detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:12px;}
+    .detail-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;}
+    .detail-card-label{font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
+    .quiz-line{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);}
+    .quiz-line:last-child{border-bottom:none;}
+    .chevron{font-size:12px;color:var(--text3);transition:transform .18s;flex-shrink:0;}
+    .chevron.open{transform:rotate(180deg);}
+    .add-trainee-form{background:var(--surface);border:1px solid var(--gold-border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:2rem;}
+    .form-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:flex-end;}
+    @media(max-width:700px){.form-row{grid-template-columns:1fr;}}
+    .form-field{display:flex;flex-direction:column;}
+
+    /* ── Content editor layout ── */
+    .content-layout{display:flex;min-height:calc(100vh - 130px);border-top:1px solid var(--border);}
+
+    /* ── Content sidebar ── */
+    .content-sidebar{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;position:sticky;top:0;max-height:calc(100vh - 130px);flex-shrink:0;width:260px;min-width:160px;max-width:500px;}
+
+    /* ── Resize handle ── */
+    .resize-handle{width:5px;background:transparent;cursor:col-resize;flex-shrink:0;transition:background .15s;position:relative;}
+    .resize-handle:hover,.resize-handle.dragging{background:var(--gold-border);}
+    .resize-handle::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:40px;border-radius:2px;background:var(--border2);}
+    .cs-header{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+    .cs-label{font-family:var(--cinzel);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);}
+    .cs-add-btn{width:20px;height:20px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold-border);color:var(--gold);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;transition:all .15s;}
+    .cs-add-btn:hover{background:var(--gold);color:#000;}
+
+    /* Module rows in sidebar */
+    .cs-mod{border-bottom:1px solid var(--border);}
+    .cs-mod-row{display:flex;align-items:center;gap:6px;padding:8px 10px;cursor:pointer;transition:background .15s;}
+    .cs-mod-row:hover{background:var(--surface2);}
+    .cs-mod-row.active{background:var(--surface2);border-left:2px solid var(--gold);}
+    .cs-mod-row.drag-over{background:var(--gold-dim);}
+    .cs-drag{color:var(--text3);font-size:13px;cursor:grab;flex-shrink:0;padding:2px;}
+    .cs-drag:active{cursor:grabbing;}
+    .cs-num{font-family:var(--cinzel);font-size:10px;font-weight:600;color:var(--text3);width:22px;flex-shrink:0;text-align:center;}
+    .cs-title{flex:1;font-family:var(--cinzel);font-size:11px;font-weight:600;letter-spacing:.03em;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .cs-title.active{color:var(--gold);}
+    .cs-chevron{font-size:10px;color:var(--text3);transition:transform .15s;flex-shrink:0;}
+    .cs-chevron.open{transform:rotate(180deg);}
+    .cs-mod-actions{display:flex;gap:4px;flex-shrink:0;}
+    .cs-icon-btn{background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:2px 4px;border-radius:4px;transition:all .15s;line-height:1;}
+    .cs-icon-btn:hover{color:var(--gold);background:var(--gold-dim);}
+    .cs-icon-btn.del:hover{color:var(--danger);background:var(--danger-bg);}
+
+    /* Sub-module rows */
+    .cs-sub-list{display:none;background:var(--bg);}
+    .cs-sub-list.open{display:block;}
+    .cs-sub-row{display:flex;align-items:center;gap:6px;padding:7px 10px 7px 28px;cursor:pointer;transition:background .15s;border-bottom:1px solid var(--border);}
+    .cs-sub-row:last-child{border-bottom:none;}
+    .cs-sub-row:hover{background:var(--surface2);}
+    .cs-sub-row.active{background:var(--surface2);border-left:2px solid var(--gold-border);}
+    .cs-sub-dot{width:5px;height:5px;border-radius:50%;background:var(--text3);flex-shrink:0;}
+    .cs-sub-dot.active{background:var(--gold);}
+    .cs-sub-title{flex:1;font-family:var(--font);font-size:12px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .cs-sub-title.active{color:var(--text);}
+
+    /* ── Editor panel ── */
+    .editor-panel{padding:1.5rem;overflow-y:auto;max-height:calc(100vh - 130px);}
+    .editor-heading{font-family:var(--display);font-size:1.6rem;letter-spacing:.06em;margin-bottom:4px;}
+    .editor-subhead{font-family:var(--cinzel);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:1.5rem;}
+    .editor-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden;}
+    .editor-section-header{padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+    .editor-section-title{font-family:var(--cinzel);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);}
+    .editor-section-body{padding:1rem;}
+    .item-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;display:flex;gap:8px;align-items:flex-start;}
+    .item-card.dragging{opacity:.4;}
+    .item-fields{flex:1;display:flex;flex-direction:column;gap:6px;}
+    .drag-handle{cursor:grab;color:var(--text3);padding:4px;font-size:14px;flex-shrink:0;user-select:none;}
+    .drag-handle:active{cursor:grabbing;}
+    .option-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+    .correct-radio{width:16px;height:16px;accent-color:var(--gold);flex-shrink:0;cursor:pointer;}
+    .add-item-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:10px;font-family:var(--cinzel);letter-spacing:.1em;text-transform:uppercase;color:var(--gold);border:1px dashed var(--gold-border);background:var(--gold-dim);border-radius:var(--radius);cursor:pointer;transition:all .15s;width:100%;justify-content:center;margin-top:4px;}
+    .add-item-btn:hover{background:rgba(201,168,76,.18);}
+    .save-bar{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--border);padding:.75rem 0;margin-top:1rem;display:flex;justify-content:flex-end;gap:10px;align-items:center;}
+    .save-status{font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);}
+    .save-status.saved{color:var(--success);}
+    .delete-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:4px 6px;flex-shrink:0;transition:color .15s;}
+    .delete-btn:hover{color:var(--danger);}
+    .youtube-preview{margin-top:8px;border-radius:var(--radius);overflow:hidden;}
+    .youtube-preview iframe{width:100%;aspect-ratio:16/9;border:none;display:block;}
+    .img-preview{margin-top:8px;border-radius:var(--radius);overflow:hidden;max-height:180px;}
+    .img-preview img{width:100%;object-fit:cover;display:block;}
+    /* ── Mobile ── */
+    @media(max-width:900px){
+      .content-layout{flex-direction:column;}
+      .content-sidebar{width:100% !important;min-width:unset !important;height:auto;max-height:280px;position:static;border-right:none;border-bottom:1px solid var(--border);}
+      .resize-handle{display:none;}
+      .editor-panel{max-height:unset !important;}
+    }
+    @media(max-width:600px){
+      .page-wrap-wide{padding:0.75rem !important;}
+      .form-row{grid-template-columns:1fr !important;}
+      .trainee-header{padding:0.75rem 1rem !important;gap:0.75rem !important;}
+      .detail-grid{grid-template-columns:1fr !important;}
+      .tabs{overflow-x:auto;}
+      .tab{padding:10px 14px;font-size:9px;}
+      .cs-mod-row{padding:8px;}
+      .editor-panel{padding:1rem !important;}
+    }
+    .input-std{background:var(--surface);border:1px solid var(--gold-border);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-family:var(--font);font-size:14px;width:100%;}
+    .textarea-std{background:var(--surface);border:1px solid var(--gold-border);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-family:var(--font);font-size:14px;width:100%;resize:vertical;min-height:80px;}
+    .empty-editor{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;color:var(--text3);font-family:var(--serif);font-style:italic;text-align:center;gap:1rem;}
+  </style>
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+  <div class="loading-wrap" id="loading"><div class="spinner"></div><p>Loading admin...</p></div>
+
+  <main id="main" style="display:none;">
+    <div style="max-width:1200px;margin:0 auto;padding:1.5rem 1rem 0;">
+      <div class="fade-up" style="margin-bottom:1rem;">
+        <p style="font-family:var(--cinzel);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:4px;font-style:normal;">Admin Panel</p>
+        <h1 class="gold-text">Training Management</h1>
+      </div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('trainees')">Trainees</button>
+        <button class="tab" onclick="switchTab('content')">Module Content</button>
+        <button class="tab" onclick="switchTab('settings')">Settings</button>
+      </div>
+    </div>
+
+    <!-- TRAINEES TAB -->
+    <div class="tab-panel active" id="tab-trainees" style="padding:1.5rem;max-width:1200px;margin:0 auto;">
+      <div id="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:2rem;"></div>
+      <div class="add-trainee-form fade-up">
+        <h3 style="font-family:var(--display);font-size:1.4rem;letter-spacing:.06em;margin-bottom:1rem;">Add New Trainee</h3>
+        <div class="form-row">
+          <div class="form-field"><label>Full name</label><input type="text" id="new-name" placeholder="Jordan Smith" class="input-std"/></div>
+          <div class="form-field"><label>Email</label><input type="email" id="new-email" placeholder="jordan@belladonna.com" class="input-std"/></div>
+          <div class="form-field"><label>Temp password</label><input type="text" id="new-password" placeholder="Min 6 chars" class="input-std"/></div>
+          <div class="form-field"><label style="opacity:0;">x</label><button class="btn btn-primary" id="add-trainee-btn" onclick="handleAddTrainee()">Add Trainee</button></div>
+        </div>
+        <div id="add-trainee-error" style="display:none;margin-top:10px;" class="error-msg"></div>
+      </div>
+      <div class="card fade-up" style="padding:0;overflow:hidden;">
+        <div style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <h3>All Trainees</h3><span id="trainee-count" class="text-muted"></span>
+        </div>
+        <div id="trainee-list"></div>
+      </div>
+    </div>
+
+    <!-- CONTENT TAB -->
+    <div class="tab-panel" id="tab-content">
+      <div class="content-layout" id="content-layout">
+        <!-- Content sidebar -->
+        <div class="content-sidebar" id="content-sidebar">
+          <div class="cs-header" style="flex-direction:column;align-items:stretch;gap:8px;padding:10px 12px;">
+            <div>
+              <span class="cs-label" style="display:block;margin-bottom:6px;">Course</span>
+              <select id="course-selector" onchange="selectCourse(this.value)"
+                style="background:var(--surface2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:6px 10px;color:var(--gold2);font-family:var(--cinzel);font-size:10px;letter-spacing:.06em;width:100%;cursor:pointer;">
+                <option value="academy">Belladonna Academy</option>
+                <option value="certification">Host Certification</option>
+                <option value="trivia">Trivia Time Transfer</option>
+                <option value="__add__">+ Add new course...</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px;">
+              <span class="cs-label">Modules</span>
+              <button class="cs-add-btn" title="Add module or quiz" onclick="showAddModuleMenu()">+</button>
+            </div>
+          </div>
+
+          <!-- Add module menu popup -->
+          <div id="add-module-menu" style="display:none;position:absolute;z-index:200;background:var(--surface);border:1px solid var(--gold-border);border-radius:var(--radius-lg);padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);min-width:200px;">
+            <div style="font-family:var(--cinzel);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Add to this course</div>
+            <button onclick="addModuleOfType('regular')" style="display:flex;align-items:center;gap:10px;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;cursor:pointer;margin-bottom:8px;text-align:left;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--gold-border)'" onmouseout="this.style.borderColor='var(--border)'">
+              <span style="font-size:18px;">📄</span>
+              <div>
+                <div style="font-family:var(--cinzel);font-size:12px;font-weight:600;color:var(--text);letter-spacing:.04em;">Add Module</div>
+                <div style="font-size:11px;color:var(--text3);font-family:var(--font);margin-top:2px;">Content, videos, sub-modules</div>
+              </div>
+            </button>
+            <button onclick="addModuleOfType('quiz')" style="display:flex;align-items:center;gap:10px;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;cursor:pointer;text-align:left;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--gold-border)'" onmouseout="this.style.borderColor='var(--border)'">
+              <span style="font-size:18px;">📝</span>
+              <div>
+                <div style="font-family:var(--cinzel);font-size:12px;font-weight:600;color:var(--text);letter-spacing:.04em;">Add Quiz</div>
+                <div style="font-size:11px;color:var(--text3);font-family:var(--font);margin-top:2px;">30 random questions from bank</div>
+              </div>
+            </button>
+            <button onclick="document.getElementById('add-module-menu').style.display='none'" style="margin-top:10px;width:100%;background:none;border:none;cursor:pointer;font-family:var(--cinzel);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:4px;">Cancel</button>
+          </div>
+          <div id="cs-module-list"></div>
+        </div>
+        <!-- Resize handle -->
+        <div class="resize-handle" id="resize-handle"></div>
+        <!-- Editor panel -->
+        <div class="editor-panel" id="editor-panel" style="flex:1;overflow-y:auto;max-height:calc(100vh - 130px);">
+          <div class="empty-editor">
+            <div style="font-size:2rem;">✦</div>
+            <p>Select a module or sub-module<br>from the sidebar to edit.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div class="tab-panel" id="tab-settings" style="padding:1.5rem;max-width:900px;margin:0 auto;">
+
+      <!-- Access Codes -->
+      <div class="card fade-up" style="margin-bottom:2rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+          <div>
+            <h3 style="font-family:var(--cinzel);font-size:14px;letter-spacing:.06em;text-transform:uppercase;">Access Codes</h3>
+            <p style="font-size:13px;color:var(--text3);margin-top:4px;">Hosts enter these on the courses page to unlock a course.</p>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="showAddCode()">+ Add Code</button>
+        </div>
+
+        <!-- Add code form (hidden by default) -->
+        <div id="add-code-form" style="display:none;background:var(--surface2);border:1px solid var(--gold-border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.5rem;">
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+            <div>
+              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px;">Code</label>
+              <input type="text" id="new-code-value" placeholder="e.g. ACADEMY2025" class="input-std" style="text-transform:uppercase;"/>
+            </div>
+            <div>
+              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px;">Unlocks Course</label>
+              <select id="new-code-course" class="input-std">
+                <option value="certification">Host Certification</option>
+                <option value="academy">Belladonna Academy</option>
+                <option value="trivia">Trivia Time Transfer</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-primary" onclick="saveNewCode()">Save</button>
+              <button class="btn btn-ghost" onclick="document.getElementById('add-code-form').style.display='none'">Cancel</button>
+            </div>
+          </div>
+          <div id="add-code-error" style="display:none;margin-top:10px;" class="error-msg"></div>
+        </div>
+
+        <!-- Code list -->
+        <div id="codes-list">
+          <div style="text-align:center;padding:2rem;color:var(--text3);font-family:var(--serif);font-style:italic;">Loading codes...</div>
+        </div>
+      </div>
+
+      <!-- Course Blurbs -->
+      <div class="card fade-up" style="animation-delay:.1s;">
+        <h3 style="font-family:var(--cinzel);font-size:14px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">Course Page Text</h3>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:1.5rem;">Edit the taglines and descriptions shown on the course selection page.</p>
+
+        ${['certification','academy','trivia'].map(id => `
+          <div style="margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);">
+            <div style="font-family:var(--cinzel);font-size:12px;letter-spacing:.06em;font-weight:600;margin-bottom:10px;color:var(--gold2);">
+              ${{certification:'Host Certification',academy:'Belladonna Academy',trivia:'Trivia Time Transfer'}[id]}
+            </div>
+            <div style="margin-bottom:8px;">
+              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px;">Short tagline (on card)</label>
+              <input type="text" id="tagline-${id}" class="input-std" placeholder="One-line tagline..."/>
+            </div>
+            <div>
+              <label style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px;">Longer blurb ("which one is for you" section)</label>
+              <textarea id="blurb-${id}" class="textarea-std" rows="3" placeholder="Longer description..."></textarea>
+            </div>
+          </div>`).join('')}
+
+        <div id="blurb-save-status" style="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;color:var(--text3);margin-bottom:10px;"></div>
+        <button class="btn btn-primary" onclick="saveBlurbs()">Save Course Text</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Preview modal -->
+  <div id="preview-modal" style="display:none;position:fixed;inset:0;z-index:500;background:var(--bg);overflow-y:auto;">
+    <div style="background:var(--surface);border-bottom:1px solid var(--gold-border);padding:10px 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;">
+      <span style="font-family:var(--cinzel);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);">Trainee Preview</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="preview-mod-name" style="font-family:var(--cinzel);font-size:10px;color:var(--text3);"></span>
+        <button class="btn btn-primary btn-sm" onclick="closePreview()">← Back to editor</button>
+      </div>
+    </div>
+    <div id="preview-content" style="max-width:860px;margin:0 auto;padding:2rem 1.5rem 4rem;"></div>
+  </div>
+
+  <div class="toast-wrap" id="toast-wrap"></div>
+
+  <script type="module">
+    import { requireAdmin, renderNav, doLogout, db, showToast, adminSignOffFn, revokeSignOffFn, createTrainee } from "./firebase-init.js";
+    import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, serverTimestamp, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    window._logout = doLogout;
+
+    const MODULES_COUNT = 6;
+    const SIGNOFF_STEPS = [
+      {key:"dryRunComplete",label:"Dry Run",dateKey:"dryRunDate"},
+      {key:"shadowGigComplete",label:"Shadow Gig",dateKey:"shadowGigDate"},
+      {key:"soloLaunchComplete",label:"Solo Launch",dateKey:"soloLaunchDate"},
+    ];
+
+    let allTrainees=[], certMap={}, progressMap={};
+    let currentPreviewModuleId = null; // tracks which module to preview
+
+    // Current course being edited
+    let currentCourse = "academy"; // default
+
+    // All modules data (array, ordered)
+    let modulesData = [];
+    let activeModuleIdx = null;
+    let activeSubmoduleIdx = null; // null = editing parent module
+    let activeView = null; // 'module' | 'submodule'
+    let dragSrc = null, dragType = null;
+
+    // ── Tab switch ────────────────────────────────────────────────────────────
+    window.switchTab = function(tab) {
+      document.querySelectorAll(".tab").forEach((t,i)=>t.classList.toggle("active",["trainees","content","settings"][i]===tab));
+      document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+      document.getElementById(`tab-${tab}`).classList.add("active");
+      if (tab==="content" && modulesData.length===0) loadAllModules();
+      if (tab==="settings") loadSettings();
+    };
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    requireAdmin(async (user, profile) => {
+      document.getElementById("nav-placeholder").innerHTML = renderNav(profile, false);
+      await loadTrainees();
+      document.getElementById("loading").style.display="none";
+      document.getElementById("main").style.display="block";
+    });
+
+    // ── Load all modules ──────────────────────────────────────────────────────
+    window.selectCourse = function(courseId) {
+      if (courseId === "__add__") {
+        const name = prompt("Enter the name of the new course (e.g. Wedding DJ & MC):");
+        if (!name) {
+          // Reset selector back to current course
+          document.getElementById("course-selector").value = currentCourse;
+          return;
+        }
+        // Generate a slug from the name
+        const id = name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+        // Add option to selector
+        const sel = document.getElementById("course-selector");
+        const newOpt = document.createElement("option");
+        newOpt.value = id; newOpt.textContent = name;
+        // Insert before the "Add new course" option
+        sel.insertBefore(newOpt, sel.lastElementChild);
+        sel.value = id;
+        currentCourse = id;
+        modulesData = [];
+        activeModuleIdx = null; activeSubmoduleIdx = null; activeView = null;
+        document.getElementById("editor-panel").innerHTML = `<div class="empty-editor"><div style="font-size:2rem;">✦</div><p>Select a module or sub-module<br>from the sidebar to edit.</p></div>`;
+        loadAllModules();
+        showToast(`Course "${name}" created. Add modules to get started.`,"success");
+        return;
+      }
+      currentCourse = courseId;
+      modulesData = [];
+      activeModuleIdx = null;
+      activeSubmoduleIdx = null;
+      activeView = null;
+      document.getElementById("editor-panel").innerHTML = `<div class="empty-editor"><div style="font-size:2rem;">✦</div><p>Select a module or sub-module<br>from the sidebar to edit.</p></div>`;
+      loadAllModules();
+    };
+
+    function getModulesCollection() {
+      // New structure: courses/{courseId}/modules
+      // Fall back to legacy flat "modules" collection for academy (backwards compat)
+      if (currentCourse === "academy") {
+        return collection(db,"modules"); // legacy — existing academy modules stay here
+      }
+      return collection(db,"courses",currentCourse,"modules");
+    }
+
+    function getModuleDocRef(moduleId) {
+      if (currentCourse === "academy") {
+        return doc(db,"modules",moduleId);
+      }
+      return doc(db,"courses",currentCourse,"modules",moduleId);
+    }
+
+    function getSubcollectionRef(moduleId, subcoll) {
+      if (currentCourse === "academy") {
+        return collection(db,"modules",moduleId,subcoll);
+      }
+      return collection(db,"courses",currentCourse,"modules",moduleId,subcoll);
+    }
+
+    async function loadAllModules() {
+      const panel = document.getElementById("cs-module-list");
+      panel.innerHTML=`<div style="padding:1rem;text-align:center;"><div class="spinner" style="width:20px;height:20px;border-width:2px;margin:0 auto;"></div></div>`;
+      
+      let snap;
+      try {
+        snap = await getDocs(query(getModulesCollection(),orderBy("order")));
+        if (snap.empty) throw new Error("empty ordered");
+      } catch(e) {
+        snap = await getDocs(getModulesCollection());
+      }
+
+      let docs = snap.docs.map(d => ({id:d.id,...d.data()}));
+      // Sort: by order field if present, otherwise by module number in ID, otherwise by title
+      docs.sort((a,b) => {
+        const aOrder = a.order ?? parseInt(a.id.replace(/\D/g,"")) ?? 999;
+        const bOrder = b.order ?? parseInt(b.id.replace(/\D/g,"")) ?? 999;
+        return aOrder - bOrder;
+      });
+
+      modulesData = await Promise.all(docs.map(async (d,i) => {
+        const m = {...d, order: d.order ?? i+1, _open:false};
+        await loadModuleSubdata(m);
+        return m;
+      }));
+      renderSidebar();
+    }
+
+    async function loadModuleSubdata(m) {
+      const [vidSnap,queSnap,subSnap] = await Promise.all([
+        getDocs(query(getSubcollectionRef(m.id,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
+        getDocs(query(getSubcollectionRef(m.id,"questions"),orderBy("order"))).catch(()=>({docs:[]})),
+        getDocs(query(getSubcollectionRef(m.id,"submodules"),orderBy("order"))).catch(()=>({docs:[]})),
+      ]);
+      m.videos = vidSnap.docs.map(d=>({id:d.id,...d.data()}));
+      m.questions = queSnap.docs.map(d=>({id:d.id,...d.data()}));
+      m.contentBlocks = (m.content||"").split("\n\n").filter(b=>b.trim()).map((b,i)=>({tempId:`b${i}`,text:b.trim()}));
+      m.submodules = await Promise.all(subSnap.docs.map(async sd=>{
+        const sub={id:sd.id,...sd.data()};
+        const [svSnap,siSnap]=await Promise.all([
+          getDocs(query(collection(db,"modules",m.id,"submodules",sd.id,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
+          getDocs(query(collection(db,"modules",m.id,"submodules",sd.id,"images"),orderBy("order"))).catch(()=>({docs:[]})),
+        ]);
+        sub.videos=svSnap.docs.map(v=>({id:v.id,...v.data()}));
+        sub.images=siSnap.docs.map(i=>({id:i.id,...i.data()}));
+        // Load subsections (sub-sub-modules)
+        const ssSnap = await getDocs(query(collection(db,"modules",m.id,"submodules",sd.id,"subsections"),orderBy("order"))).catch(()=>({docs:[]}));
+        sub.subsections = await Promise.all(ssSnap.docs.map(async ss => {
+          const ssData={id:ss.id,...ss.data()};
+          const [ssVids,ssImgs]=await Promise.all([
+            getDocs(collection(db,"modules",m.id,"submodules",sd.id,"subsections",ss.id,"videos")).catch(()=>({docs:[]})),
+            getDocs(collection(db,"modules",m.id,"submodules",sd.id,"subsections",ss.id,"images")).catch(()=>({docs:[]})),
+          ]);
+          ssData.videos=ssVids.docs.map(v=>({id:v.id,...v.data()}));
+          ssData.images=ssImgs.docs.map(i=>({id:i.id,...i.data()}));
+          ssData.contentBlocks=(ssData.content||"").split("\n\n").filter(b=>b.trim()).map((b,i)=>({tempId:`ssc${i}`,text:b.trim()}));
+          return ssData;
+        }));
+        // Restore blocks from JSON (preserves newlines within blocks)
+        if (sub.blocksJson) {
+          try {
+            const parsed = JSON.parse(sub.blocksJson);
+            sub.blocks = parsed.map(b=>({...b, tempId:`${b.type}${Math.random()}`}));
+          } catch(e) { sub.blocks = null; }
+        } else {
+          // Fallback: build from old separate arrays
+          sub.blocks = null; // initSubBlocks handles this
+          sub.contentBlocks=(sub.content||"").split("\n\n").filter(b=>b.trim()).map((b,i)=>({tempId:`sb${i}`,text:b.trim()}));
+        }
+        return sub;
+      }));
+    }
+
+    // ── Sidebar ───────────────────────────────────────────────────────────────
+    function renderSidebar() {
+      const list = document.getElementById("cs-module-list");
+      list.innerHTML = "";
+      modulesData.forEach((mod, mi) => {
+        const isActiveMod = activeView==="module" && activeModuleIdx===mi;
+        const modDiv = document.createElement("div");
+        modDiv.className = "cs-mod";
+        modDiv.dataset.mi = mi;
+
+        // Module row
+        const row = document.createElement("div");
+        row.className = `cs-mod-row ${isActiveMod?"active":""}`;
+        row.setAttribute("draggable","true");
+        row.dataset.mi = mi;
+        row.innerHTML = `
+          <span class="cs-drag" title="Drag to reorder">⠿</span>
+          <span class="cs-num">${mi+1}</span>
+          <span class="cs-title ${isActiveMod?"active":""}">${mod.title||"Untitled module"}</span>
+          <span class="cs-mod-actions">
+            <button class="cs-icon-btn" title="Add sub-module" onclick="event.stopPropagation();addSubmodule(${mi})">+</button>
+            <button class="cs-icon-btn del" title="Delete module" onclick="event.stopPropagation();deleteModule(${mi})">✕</button>
+          </span>
+          <span class="cs-chevron ${mod._open?"open":""}" id="cs-chev-${mi}" title="Expand/collapse">▾</span>`;
+        // Title click = select/edit. Chevron click = toggle open independently.
+        row.addEventListener("click", (e) => {
+          if (e.target.classList.contains("cs-chevron")) {
+            toggleModuleOpen(mi);
+          } else {
+            selectModule(mi);
+          }
+        });
+        addSidebarDrag(row, mi);
+        modDiv.appendChild(row);
+
+        // Sub-module list
+        const subList = document.createElement("div");
+        subList.className = `cs-sub-list ${mod._open?"open":""}`;
+        subList.id = `cs-sublist-${mi}`;
+
+        (mod.submodules||[]).forEach((sub,si) => {
+          const isActiveSub = activeView==="submodule" && activeModuleIdx===mi && activeSubmoduleIdx===si;
+          const subRow = document.createElement("div");
+          subRow.className = `cs-sub-row ${isActiveSub?"active":""}`;
+          subRow.innerHTML = `
+            <span class="cs-drag" style="font-size:11px;" title="Drag to reorder">⠿</span>
+            <span class="cs-sub-dot ${isActiveSub?"active":""}"></span>
+            <span class="cs-sub-title ${isActiveSub?"active":""}">${sub.order?sub.order+" — ":""}${sub.title||"Untitled"}</span>
+            <button class="cs-icon-btn del" title="Delete" onclick="event.stopPropagation();deleteSubmodule(${mi},${si})">✕</button>`;
+          subRow.addEventListener("click", ()=>selectSubmodule(mi,si));
+          // Submodule drag
+          subRow.setAttribute("draggable","true");
+          subRow.dataset.mi = mi;
+          subRow.dataset.si = si;
+          subRow.addEventListener("dragstart", e=>{
+            dragSrc=subRow; dragType="submodule";
+            e.dataTransfer.effectAllowed="move";
+            e.dataTransfer.setData("text/plain", JSON.stringify({mi,si}));
+            setTimeout(()=>subRow.style.opacity="0.4",0);
+            e.stopPropagation();
+          });
+          subRow.addEventListener("dragend",()=>{ subRow.style.opacity="1"; dragSrc=null; });
+          subRow.addEventListener("dragover",e=>{ e.preventDefault(); e.stopPropagation(); subRow.style.background="var(--gold-dim)"; });
+          subRow.addEventListener("dragleave",()=>{ subRow.style.background=""; });
+          subRow.addEventListener("drop",e=>{
+            e.preventDefault(); e.stopPropagation();
+            subRow.style.background="";
+            if (!dragSrc || dragType!=="submodule") return;
+            const {mi:fromMi, si:fromSi} = JSON.parse(e.dataTransfer.getData("text/plain"));
+            const toSi = si;
+            if (fromMi!==mi || fromSi===toSi) return;
+            const subs = modulesData[mi].submodules;
+            const item = subs.splice(fromSi,1)[0];
+            subs.splice(toSi,0,item);
+            // Renumber submodule orders
+            renumberSubmodules(mi);
+            if (activeSubmoduleIdx===fromSi) activeSubmoduleIdx=toSi;
+            else if (activeSubmoduleIdx>fromSi && activeSubmoduleIdx<=toSi) activeSubmoduleIdx--;
+            else if (activeSubmoduleIdx<fromSi && activeSubmoduleIdx>=toSi) activeSubmoduleIdx++;
+            renderSidebar();
+            showToast("Reordered — save sub-module to persist.","info");
+          });
+          subList.appendChild(subRow);
+        });
+
+        modDiv.appendChild(subList);
+        list.appendChild(modDiv);
+      });
+    }
+
+    function refreshEditorHeading() {
+      if (activeView === "module" && activeModuleIdx !== null) {
+        const display = document.getElementById("editor-mod-title-display");
+        const subhead = display?.previousElementSibling;
+        if (subhead) subhead.textContent = `Module ${activeModuleIdx+1}`;
+      } else if (activeView === "submodule" && activeModuleIdx !== null && activeSubmoduleIdx !== null) {
+        const subhead = document.querySelector(".editor-subhead");
+        if (subhead) subhead.textContent = `Module ${activeModuleIdx+1} › Sub-module`;
+      }
+    }
+
+    // ── Sidebar drag to reorder modules ───────────────────────────────────────
+    function addSidebarDrag(row, mi) {
+      row.addEventListener("dragstart", e=>{
+        dragSrc=row; dragType="module";
+        e.dataTransfer.effectAllowed="move";
+        e.dataTransfer.setData("text/plain", mi);
+        setTimeout(()=>row.style.opacity="0.4",0);
+      });
+      row.addEventListener("dragend", ()=>{ row.style.opacity="1"; dragSrc=null; });
+      row.addEventListener("dragover", e=>{ e.preventDefault(); row.closest(".cs-mod").classList.add("drag-over"); });
+      row.addEventListener("dragleave", ()=>row.closest(".cs-mod").classList.remove("drag-over"));
+      row.addEventListener("drop", e=>{
+        e.preventDefault();
+        row.closest(".cs-mod").classList.remove("drag-over");
+        if (!dragSrc || dragType!=="module") return;
+        const fromIdx = parseInt(e.dataTransfer.getData("text/plain"));
+        const toIdx = mi;
+        if (fromIdx===toIdx) return;
+        const item = modulesData.splice(fromIdx,1)[0];
+        modulesData.splice(toIdx,0,item);
+        // Update order numbers
+        renumberAllModules();
+        // If active module moved, update index
+        if (activeModuleIdx===fromIdx) activeModuleIdx=toIdx;
+        else if (activeModuleIdx>fromIdx && activeModuleIdx<=toIdx) activeModuleIdx--;
+        else if (activeModuleIdx<fromIdx && activeModuleIdx>=toIdx) activeModuleIdx++;
+        renderSidebar();
+        refreshEditorHeading();
+        showToast("Reordered — save module to persist new order.","info");
+      });
+    }
+
+    // ── Select module / submodule ─────────────────────────────────────────────
+    function selectModule(mi) {
+      // Selecting a module opens it but never closes others
+      activeModuleIdx = mi;
+      activeSubmoduleIdx = null;
+      activeView = "module";
+      if (!modulesData[mi]._open) {
+        modulesData[mi]._open = true;
+      }
+      renderSidebar();
+      renderModuleEditor(mi);
+    }
+
+    // Chevron click — toggle open/close independently, never affects others
+    function toggleModuleOpen(mi) {
+      modulesData[mi]._open = !modulesData[mi]._open;
+      // Just update the chevron and sublist DOM directly — no full re-render
+      const chev = document.getElementById(`cs-chev-${mi}`);
+      const sublist = document.getElementById(`cs-sublist-${mi}`);
+      if (chev) chev.classList.toggle("open", modulesData[mi]._open);
+      if (sublist) sublist.classList.toggle("open", modulesData[mi]._open);
+    }
+
+    window.selectSubmodule = function(mi, si) {
+      activeModuleIdx = mi;
+      activeSubmoduleIdx = si;
+      activeView = "submodule";
+      // Update active classes without re-rendering the whole sidebar
+      document.querySelectorAll(".cs-mod-row").forEach(r => r.classList.remove("active"));
+      document.querySelectorAll(".cs-title").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".cs-sub-row").forEach(r => r.classList.remove("active"));
+      document.querySelectorAll(".cs-sub-dot").forEach(d => d.classList.remove("active"));
+      document.querySelectorAll(".cs-sub-title").forEach(t => t.classList.remove("active"));
+      // Mark the parent module row as active
+      const modRow = document.querySelector(`[data-mi="${mi}"] .cs-mod-row`);
+      if (modRow) modRow.classList.add("active");
+      // Mark the submodule row active — it's the (si)th cs-sub-row inside cs-sublist-mi
+      const subList = document.getElementById(`cs-sublist-${mi}`);
+      if (subList) {
+        const subRows = subList.querySelectorAll(".cs-sub-row");
+        if (subRows[si]) {
+          subRows[si].classList.add("active");
+          subRows[si].querySelector(".cs-sub-dot")?.classList.add("active");
+          subRows[si].querySelector(".cs-sub-title")?.classList.add("active");
+        }
+      }
+      renderSubmoduleEditor(mi, si);
+    };
+
+    // ── Add / delete module ───────────────────────────────────────────────────
+    window.showAddModuleMenu = function() {
+      const menu = document.getElementById("add-module-menu");
+      const btn = document.querySelector('[title="Add module or quiz"]');
+      if (!menu) return;
+      if (menu.style.display === "none") {
+        // Position near the + button
+        const rect = btn ? btn.getBoundingClientRect() : {left:0,bottom:0};
+        menu.style.left = rect.left + "px";
+        menu.style.top = (rect.bottom + 8) + "px";
+        menu.style.display = "block";
+        // Click outside to close
+        setTimeout(()=>document.addEventListener("click", closeMenuOnOutside), 10);
+      } else {
+        menu.style.display = "none";
+      }
+    };
+
+    function closeMenuOnOutside(e) {
+      const menu = document.getElementById("add-module-menu");
+      if (menu && !menu.contains(e.target) && !e.target.closest('[title="Add module or quiz"]')) {
+        menu.style.display = "none";
+        document.removeEventListener("click", closeMenuOnOutside);
+      }
+    }
+
+    window.addModuleOfType = function(type) {
+      document.getElementById("add-module-menu").style.display = "none";
+      document.removeEventListener("click", closeMenuOnOutside);
+      const newId = `module_${Date.now()}`;
+      const newOrder = modulesData.length + 1;
+      const defaultTitle = type === "quiz" ? "Final Certification Quiz" : "New Module";
+      modulesData.push({
+        id:newId, title:defaultTitle, description:"", content:"", bannerImage:"",
+        moduleType: type, passingScore:23, totalQuestions:30, order:newOrder,
+        contentBlocks:[], videos:[], questions:[], submodules:[], _open:true, _new:true
+      });
+      activeModuleIdx = modulesData.length-1;
+      activeSubmoduleIdx = null;
+      activeView = "module";
+      renderSidebar();
+      renderModuleEditor(activeModuleIdx);
+      showToast(`New ${type==="quiz"?"quiz":"module"} added — fill in details and save.`,"info");
+    };
+
+    // Keep old addModule as alias
+    window.addModule = function() { showAddModuleMenu(); };
+
+    window.deleteModule = async function(mi) {
+      const mod = modulesData[mi];
+      const modName = mod.title || "this module";
+      const typed = prompt(`⚠️ PERMANENT DELETE\n\nThis will delete "${modName}" and ALL its sub-modules, videos, and questions.\n\nType the module title exactly to confirm:`);
+      if (typed === null) return;
+      if (typed.trim() !== modName.trim()) {
+        alert(`Title didn't match — "${modName}" was NOT deleted.`);
+        return;
+      }
+      if (!mod._new) {
+        // Delete from Firestore
+        try {
+          const subSnap = await getDocs(getSubmoduleCollRef(mod.id));
+          for (const sd of subSnap.docs) {
+            const svSnap=await getDocs(collection(db,"modules",mod.id,"submodules",sd.id,"videos"));
+            const siSnap=await getDocs(collection(db,"modules",mod.id,"submodules",sd.id,"images"));
+            await Promise.all([...svSnap.docs,...siSnap.docs].map(d=>deleteDoc(d.ref)));
+            await deleteDoc(sd.ref);
+          }
+          const vidSnap=await getDocs(getSubcollectionRef(mod.id,"videos"));
+          const queSnap=await getDocs(getSubcollectionRef(mod.id,"questions"));
+          await Promise.all([...vidSnap.docs,...queSnap.docs].map(d=>deleteDoc(d.ref)));
+          await deleteDoc(getModuleDocRef(mod.id));
+        } catch(e){ showToast("Error deleting from database.","error"); return; }
+      }
+      modulesData.splice(mi,1);
+      renumberAllModules();
+      if (activeModuleIdx===mi) { activeModuleIdx=null; activeView=null; document.getElementById("editor-panel").innerHTML=`<div class="empty-editor"><div style="font-size:2rem;">✦</div><p>Select a module from the sidebar.</p></div>`; }
+      else if (activeModuleIdx>mi) activeModuleIdx--;
+      renderSidebar();
+      showToast("Module deleted.","success");
+    };
+
+    // ── Add / delete submodule ────────────────────────────────────────────────
+    function renumberSubmodules(mi) {
+      const mod = modulesData[mi];
+      (mod.submodules||[]).forEach((sub,si) => {
+        sub.order = `${mi+1}.${si+1}`;
+      });
+    }
+
+    function renumberAllModules() {
+      modulesData.forEach((mod,mi) => {
+        mod.order = mi+1;
+        renumberSubmodules(mi);
+      });
+    }
+
+    window.addSubmodule = function(mi) {
+      const mod = modulesData[mi];
+      const count = (mod.submodules||[]).length + 1;
+      const order = `${mi+1}.${count}`;
+      if (!mod.submodules) mod.submodules = [];
+      mod.submodules.push({
+        id:`sub_${Date.now()}`, title:"New Sub-module", description:"", content:"",
+        bannerImage:"", order, contentBlocks:[], videos:[], images:[], _new:true
+      });
+      mod._open = true;
+      activeModuleIdx = mi;
+      activeSubmoduleIdx = mod.submodules.length-1;
+      activeView = "submodule";
+      renderSidebar();
+      renderSubmoduleEditor(mi, activeSubmoduleIdx);
+      showToast("Sub-module added — fill in details and save.","info");
+    };
+
+    window.deleteSubmodule = async function(mi, si) {
+      const sub = modulesData[mi].submodules[si];
+      if (!confirm(`Delete "${sub.title||"this sub-module"}"?`)) return;
+      if (!sub._new) {
+        try {
+          const mod = modulesData[mi];
+          const svSnap=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"videos"));
+          const siSnap=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"images"));
+          await Promise.all([...svSnap.docs,...siSnap.docs].map(d=>deleteDoc(d.ref)));
+          await deleteDoc(getSubmoduleDocRef(mod.id,sub.id));
+        } catch(e){ showToast("Error deleting.","error"); return; }
+      }
+      modulesData[mi].submodules.splice(si,1);
+      if (activeView==="submodule" && activeModuleIdx===mi && activeSubmoduleIdx===si) {
+        activeSubmoduleIdx=null; activeView="module";
+        renderModuleEditor(mi);
+      }
+      renderSidebar();
+      showToast("Sub-module deleted.","success");
+    };
+
+    // ── Module editor ─────────────────────────────────────────────────────────
+    function renderModuleEditor(mi) {
+      const mod = modulesData[mi];
+      const panel = document.getElementById("editor-panel");
+      panel.innerHTML = `
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;gap:1rem;flex-wrap:wrap;">
+          <div>
+            <div class="editor-subhead">Module ${mi+1}</div>
+            <div class="editor-heading gold-text" id="editor-mod-title-display">${mod.title||"Untitled"}</div>
+          ${mod.moduleType==="quiz" ? `<div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:var(--gold-dim);border:1px solid var(--gold-border);border-radius:99px;padding:4px 12px;font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold2);">✦ Quiz Module — 30 questions randomized from bank</div>` : ""}
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span id="autosave-status" style="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);"></span>
+            <button class="btn btn-ghost btn-sm" onclick="openPreview('${mod.id}')">Preview as Trainee</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadAllModules()">Discard</button>
+            <button class="btn btn-primary" id="save-mod-btn" onclick="saveModule(${mi})">Save Module</button>
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <div class="editor-section-header"><span class="editor-section-title">Module Info</span></div>
+          <div class="editor-section-body" style="display:flex;flex-direction:column;gap:10px;">
+            <div><label>Title</label><input class="input-std" id="mod-title" value="${esc(mod.title||"")}" placeholder="e.g. Brand & Ethics" oninput="updateModTitle(${mi},this.value)"/></div>
+            <div><label>Short description</label><input class="input-std" id="mod-desc" value="${esc(mod.description||"")}" placeholder="Shown on dashboard"/></div>
+            <div><label>Banner image URL</label><input class="input-std" id="mod-banner" value="${esc(mod.bannerImage||"")}" placeholder="https://..."/></div>
+            <div id="mod-banner-preview" style="${mod.bannerImage?"":"display:none;"}">${mod.bannerImage?`<div class="img-preview"><img src="${mod.bannerImage}"/></div>`:""}</div>
+
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <div class="editor-section-header"><span class="editor-section-title">Intro Content</span><span style="font-size:11px;color:var(--text3);font-family:var(--serif);font-style:italic;">Use ![caption](url) to embed images</span></div>
+          <div class="editor-section-body">
+            <div id="mod-content-list"></div>
+            <button class="add-item-btn" id="add-mod-content-btn">+ Add Content Section</button>
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <div class="editor-section-header"><span class="editor-section-title">Module-level Videos</span></div>
+          <div class="editor-section-body">
+            <div id="mod-videos-list"></div>
+            <button class="add-item-btn" id="add-mod-video-btn">+ Add Video</button>
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <span class="editor-section-title" id="questions-section-title">Quiz Questions</span>
+            <span style="font-size:11px;color:var(--text3);font-family:var(--serif);font-style:italic;" id="questions-section-hint">Radio = correct answer</span>
+          </div>
+          <div class="editor-section-body">
+            <div id="mod-questions-list"></div>
+            <button class="add-item-btn" id="add-mod-question-btn">+ Add Question</button>
+          </div>
+        </div>`;
+
+      // Wire buttons
+      document.getElementById("mod-banner").addEventListener("input", function(){
+        const prev=document.getElementById("mod-banner-preview");
+        prev.style.display=this.value?"block":"none";
+        prev.innerHTML=this.value?`<div class="img-preview"><img src="${this.value}"/></div>`:"";
+      });
+      document.getElementById("add-mod-content-btn").onclick=()=>{ mod.contentBlocks.push({tempId:`b${Date.now()}`,text:""}); renderModContentBlocks(mi); };
+      document.getElementById("add-mod-video-btn").onclick=()=>{ mod.videos.push({tempId:`v${Date.now()}`,title:"",youtubeId:"",order:mod.videos.length+1}); renderModVideos(mi); };
+      document.getElementById("add-mod-question-btn").onclick=()=>{ mod.questions.push({tempId:`q${Date.now()}`,question:"",options:["","","",""],correctIndex:0,order:mod.questions.length+1}); renderModQuestions(mi); };
+
+      // Update quiz section labels based on module type
+      if (mod.moduleType === "quiz") {
+        const t = document.getElementById("questions-section-title");
+        const h = document.getElementById("questions-section-hint");
+        if (t) t.textContent = `Question Bank — ${mod.questions.length} questions (quiz pulls 30 randomly)`;
+        if (h) h.textContent = "Add 50–60 questions. Each retake randomizes a fresh 30.";
+      }
+
+      renderModContentBlocks(mi);
+      renderModVideos(mi);
+      renderModQuestions(mi);
+    }
+
+    window.updateModTitle = function(mi, val) {
+      modulesData[mi].title = val;
+      const display = document.getElementById("editor-mod-title-display");
+      if (display) display.textContent = val||"Untitled";
+      // Update sidebar live
+      const sideTitle = document.querySelector(`#cs-module-list .cs-mod:nth-child(${mi+1}) .cs-title`);
+      if (sideTitle) sideTitle.textContent = val||"Untitled";
+    };
+
+    function renderModContentBlocks(mi) {
+      const list=document.getElementById("mod-content-list"); if(!list)return;
+      list.innerHTML="";
+      const mod=modulesData[mi];
+      if(!mod.contentBlocks.length){list.innerHTML=`<p style="color:var(--text3);font-size:13px;margin-bottom:8px;">No content yet.</p>`;return;}
+      mod.contentBlocks.forEach((block,bi)=>{
+        const div=document.createElement("div");div.className="item-card";div.draggable=true;div.dataset.idx=bi;div.dataset.type="mod-content";
+        const handle=document.createElement("div");handle.className="drag-handle";handle.textContent="⠿";
+        const fields=document.createElement("div");fields.className="item-fields";
+        const ta=makeEl("textarea","Write content or use ![caption](url) for images",block.text||"",e=>mod.contentBlocks[bi].text=e.target.value,"textarea-std");
+        fields.appendChild(ta);
+        const del=document.createElement("button");del.className="delete-btn";del.textContent="✕";del.onclick=()=>{if(confirm("Delete?"))mod.contentBlocks.splice(bi,1),renderModContentBlocks(mi);};
+        div.appendChild(handle);div.appendChild(fields);div.appendChild(del);
+        addItemDrag(div,"mod-content",mi,null,renderModContentBlocks);
+        list.appendChild(div);
+      });
+    }
+
+    function renderModVideos(mi) {
+      const list=document.getElementById("mod-videos-list"); if(!list)return;
+      list.innerHTML="";
+      const mod=modulesData[mi];
+      if(!mod.videos.length){list.innerHTML=`<p style="color:var(--text3);font-size:13px;margin-bottom:8px;">No videos yet.</p>`;return;}
+      mod.videos.forEach((vid,vi)=>{
+        const div=document.createElement("div");div.className="item-card";div.draggable=true;div.dataset.idx=vi;div.dataset.type="mod-video";
+        const handle=document.createElement("div");handle.className="drag-handle";handle.textContent="⠿";
+        const fields=document.createElement("div");fields.className="item-fields";
+        const titleIn=makeEl("input","Video title",vid.title||"",e=>mod.videos[vi].title=e.target.value,"input-std");
+        const urlIn=makeEl("input","YouTube URL or video ID",vid.youtubeId||"",e=>{
+          let val=e.target.value.trim();const m2=val.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);if(m2)val=m2[1];
+          mod.videos[vi].youtubeId=val;
+          let prev=fields.querySelector(".youtube-preview");
+          if(val.length>=11){if(!prev){prev=document.createElement("div");prev.className="youtube-preview";fields.appendChild(prev);}prev.innerHTML=`<iframe src="https://www.youtube.com/embed/${val}?rel=0" allowfullscreen></iframe>`;}
+          else if(prev){prev.remove();}
+        },"input-std");
+        fields.appendChild(titleIn);fields.appendChild(urlIn);
+        if(vid.youtubeId){const prev=document.createElement("div");prev.className="youtube-preview";prev.innerHTML=`<iframe src="https://www.youtube.com/embed/${vid.youtubeId}?rel=0" allowfullscreen></iframe>`;fields.appendChild(prev);}
+        const del=document.createElement("button");del.className="delete-btn";del.textContent="✕";del.onclick=()=>{if(confirm("Delete?"))mod.videos.splice(vi,1),renderModVideos(mi);};
+        div.appendChild(handle);div.appendChild(fields);div.appendChild(del);
+        addItemDrag(div,"mod-video",mi,null,renderModVideos);
+        list.appendChild(div);
+      });
+    }
+
+    function renderModQuestions(mi) {
+      const list=document.getElementById("mod-questions-list"); if(!list)return;
+      list.innerHTML="";
+      const mod=modulesData[mi];
+      if(!mod.questions.length){list.innerHTML=`<p style="color:var(--text3);font-size:13px;margin-bottom:8px;">No questions yet.</p>`;return;}
+      mod.questions.forEach((q,qi)=>{
+        const options=[...(q.options||["","","",""])];while(options.length<4)options.push("");
+        const div=document.createElement("div");div.className="item-card";div.draggable=true;div.dataset.idx=qi;div.dataset.type="mod-question";div.style.flexDirection="column";
+        const inner=document.createElement("div");inner.style.cssText="display:flex;gap:8px;align-items:flex-start;width:100%;";
+        const handle=document.createElement("div");handle.className="drag-handle";handle.textContent="⠿";
+        const fields=document.createElement("div");fields.className="item-fields";fields.style.flex="1";
+        const qIn=makeEl("input",`Question ${qi+1}`,q.question||"",e=>mod.questions[qi].question=e.target.value,"input-std");
+        fields.appendChild(qIn);
+        const optLabel=document.createElement("label");optLabel.textContent="Options — radio = correct";optLabel.style.marginTop="8px";fields.appendChild(optLabel);
+        options.forEach((opt,oi)=>{
+          const row=document.createElement("div");row.className="option-row";
+          const radio=document.createElement("input");radio.type="radio";radio.name=`mod_correct_${mi}_${qi}`;radio.className="correct-radio";radio.checked=(q.correctIndex||0)===oi;
+          radio.addEventListener("change",()=>mod.questions[qi].correctIndex=oi);
+          const letter=document.createElement("span");letter.textContent=String.fromCharCode(65+oi);letter.style.cssText="font-family:var(--cinzel);font-size:10px;color:var(--text3);width:18px;flex-shrink:0;";
+          const optIn=makeEl("input",`Option ${String.fromCharCode(65+oi)}`,opt,e=>mod.questions[qi].options[oi]=e.target.value,"input-std");
+          row.appendChild(radio);row.appendChild(letter);row.appendChild(optIn);fields.appendChild(row);
+        });
+        const del=document.createElement("button");del.className="delete-btn";del.textContent="✕";del.onclick=()=>{if(confirm("Delete?"))mod.questions.splice(qi,1),renderModQuestions(mi);};
+        inner.appendChild(handle);inner.appendChild(fields);inner.appendChild(del);div.appendChild(inner);
+        addItemDrag(div,"mod-question",mi,null,renderModQuestions);
+        list.appendChild(div);
+      });
+    }
+
+    // ── Submodule editor ──────────────────────────────────────────────────────
+    function renderSubmoduleEditor(mi, si) {
+      const mod=modulesData[mi], sub=mod.submodules[si];
+      const panel=document.getElementById("editor-panel");
+      panel.innerHTML=`
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;gap:1rem;flex-wrap:wrap;">
+          <div>
+            <div class="editor-subhead">Module ${mi+1} › Sub-module</div>
+            <div class="editor-heading gold-text" id="editor-sub-title-display">${sub.title||"Untitled"}</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span id="autosave-status" style="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);"></span>
+            <button class="btn btn-ghost btn-sm" onclick="openPreview('${mod.id}','${sub.id}')">Preview as Trainee</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadAllModules()">Discard</button>
+            <button class="btn btn-primary" id="save-sub-btn" onclick="saveSubmodule(${mi},${si})">Save Sub-module</button>
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <div class="editor-section-header"><span class="editor-section-title">Sub-module Info</span></div>
+          <div class="editor-section-body" style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:grid;grid-template-columns:100px 1fr;gap:10px;">
+              <div><label>Order (e.g. 1.1)</label><input class="input-std" id="sub-order" value="${esc(sub.order||"")}" placeholder="1.1"/></div>
+              <div><label>Title</label><input class="input-std" id="sub-title" value="${esc(sub.title||"")}" placeholder="Sub-module title" oninput="updateSubTitle(${mi},${si},this.value)"/></div>
+            </div>
+            <div><label>Short description</label><input class="input-std" id="sub-desc" value="${esc(sub.description||"")}" placeholder="Brief description"/></div>
+            <div><label>Banner image URL</label><input class="input-std" id="sub-banner" value="${esc(sub.bannerImage||"")}" placeholder="https://..."/></div>
+            <div id="sub-banner-preview" style="${sub.bannerImage?"":"display:none;"}">${sub.bannerImage?`<div class="img-preview"><img src="${sub.bannerImage}"/></div>`:""}</div>
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <span class="editor-section-title">Content Blocks</span>
+            <span style="font-size:11px;color:var(--text3);font-family:var(--serif);font-style:italic;">Drag ⠿ to reorder — mix text, images, and videos freely</span>
+          </div>
+          <div class="editor-section-body">
+            <div id="sub-blocks-list"></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+              <button class="add-item-btn" id="add-sub-text-btn" style="flex:1;min-width:120px;">+ Text</button>
+              <button class="add-item-btn" id="add-sub-image-btn" style="flex:1;min-width:120px;">+ Image</button>
+              <button class="add-item-btn" id="add-sub-video-btn" style="flex:1;min-width:120px;">+ Video</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="editor-section" style="border-color:var(--gold-border);">
+          <div class="editor-section-header" style="background:var(--gold-dim);">
+            <span class="editor-section-title" style="color:var(--gold2);">Sub-sub-modules (e.g. 2.A, 2.B)</span>
+            <span style="font-size:11px;color:var(--text3);font-family:var(--serif);font-style:italic;">Nested sections within this sub-module</span>
+          </div>
+          <div class="editor-section-body">
+            <div id="subsections-list"></div>
+            <button class="add-item-btn" id="add-subsection-btn">+ Add Sub-sub-module</button>
+          </div>
+        </div>`;
+
+      document.getElementById("sub-banner").addEventListener("input",function(){
+        const prev=document.getElementById("sub-banner-preview");
+        prev.style.display=this.value?"block":"none";
+        prev.innerHTML=this.value?`<div class="img-preview"><img src="${this.value}"/></div>`:"";
+      });
+      document.getElementById("add-sub-text-btn").onclick=()=>{ addSubBlock(mi,si,"text"); };
+      document.getElementById("add-sub-image-btn").onclick=()=>{ addSubBlock(mi,si,"image"); };
+      document.getElementById("add-sub-video-btn").onclick=()=>{ addSubBlock(mi,si,"video"); };
+      document.getElementById("add-subsection-btn").onclick=()=>{ if(!sub.subsections)sub.subsections=[]; sub.subsections.push({id:`ss_${Date.now()}`,title:"New Section",description:"",order:`${mi+1}.${si+1}${String.fromCharCode(65+sub.subsections.length)}`,content:"",bannerImage:"",contentBlocks:[],videos:[],images:[],_new:true}); renderSubsectionsList(mi,si); };
+
+      // Merge existing separate arrays into unified blocks on first load
+      initSubBlocks(mi, si);
+      renderSubBlocks(mi, si);
+      renderSubsectionsList(mi,si);
+    }
+
+    function renderSubsectionsList(mi, si) {
+      const list = document.getElementById("subsections-list"); if(!list) return;
+      list.innerHTML = "";
+      const sub = modulesData[mi].submodules[si];
+      const sections = sub.subsections || [];
+      if (!sections.length) { list.innerHTML=`<p style="color:var(--text3);font-size:13px;margin-bottom:8px;">No sub-sub-modules yet.</p>`; return; }
+
+      sections.forEach((ss, ssi) => {
+        const card = document.createElement("div");
+        card.style.cssText = "background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px;";
+
+        // Header row
+        const header = document.createElement("div");
+        header.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:10px;";
+
+        const orderIn = makeEl("input","2.A",ss.order||"",e=>{ sections[ssi].order=e.target.value; },"input-std");
+        orderIn.style.width="70px";orderIn.style.flex="none";
+        const titleIn = makeEl("input","Section title",ss.title||"",e=>sections[ssi].title=e.target.value,"input-std");
+        const del = document.createElement("button"); del.className="delete-btn"; del.textContent="✕";
+        del.onclick=()=>{ if(confirm("Delete?")) { sections.splice(ssi,1); renderSubsectionsList(mi,si); } };
+
+        const orderWrap = document.createElement("div"); orderWrap.style.cssText="display:flex;flex-direction:column;gap:4px;flex-shrink:0;";
+        const orderLabel = document.createElement("label"); orderLabel.textContent="Order"; orderLabel.style.fontSize="10px";
+        orderWrap.appendChild(orderLabel); orderWrap.appendChild(orderIn);
+
+        const titleWrap = document.createElement("div"); titleWrap.style.cssText="display:flex;flex-direction:column;gap:4px;flex:1;";
+        const titleLabel = document.createElement("label"); titleLabel.textContent="Title"; titleLabel.style.fontSize="10px";
+        titleWrap.appendChild(titleLabel); titleWrap.appendChild(titleIn);
+
+        header.appendChild(orderWrap); header.appendChild(titleWrap); header.appendChild(del);
+        card.appendChild(header);
+
+        // Banner
+        const bannerWrap = document.createElement("div"); bannerWrap.style.marginBottom="8px";
+        const bannerLabel = document.createElement("label"); bannerLabel.textContent="Banner image URL"; bannerLabel.style.fontSize="10px";
+        const bannerIn = makeEl("input","https://...",ss.bannerImage||"",e=>{ sections[ssi].bannerImage=e.target.value; },"input-std");
+        bannerWrap.appendChild(bannerLabel); bannerWrap.appendChild(bannerIn);
+        card.appendChild(bannerWrap);
+
+        // Content textarea
+        const contentWrap = document.createElement("div"); contentWrap.style.marginBottom="8px";
+        const contentLabel = document.createElement("label"); contentLabel.textContent="Content"; contentLabel.style.fontSize="10px";
+        if (!ss.contentBlocks) ss.contentBlocks = ss.content ? ss.content.split("\n\n").filter(b=>b.trim()).map((b,i)=>({tempId:`ssc${i}`,text:b.trim()})) : [];
+        const ta = makeEl("textarea","Write content...",ss.contentBlocks.map(b=>b.text).join("\n\n")||"",e=>{
+          sections[ssi].contentBlocks = e.target.value.split("\n\n").filter(b=>b.trim()).map((b,i)=>({tempId:`ssc${i}`,text:b.trim()}));
+        },"textarea-std");
+        ta.style.minHeight="60px";
+        contentWrap.appendChild(contentLabel); contentWrap.appendChild(ta);
+        card.appendChild(contentWrap);
+
+        // Video URL
+        const vidWrap = document.createElement("div");
+        const vidLabel = document.createElement("label"); vidLabel.textContent="YouTube video (optional)"; vidLabel.style.fontSize="10px";
+        const firstVid = (ss.videos||[])[0];
+        const vidIn = makeEl("input","YouTube URL or video ID",firstVid?.youtubeId||"",e=>{
+          let val=e.target.value.trim(); const m2=val.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/); if(m2)val=m2[1];
+          if(!sections[ssi].videos)sections[ssi].videos=[];
+          if(sections[ssi].videos[0])sections[ssi].videos[0].youtubeId=val;
+          else sections[ssi].videos=[{id:`ssv_${Date.now()}`,order:1,title:sections[ssi].title||"",youtubeId:val}];
+        },"input-std");
+        vidWrap.appendChild(vidLabel); vidWrap.appendChild(vidIn);
+        card.appendChild(vidWrap);
+
+        list.appendChild(card);
+      });
+    }
+
+    window.updateSubTitle=function(mi,si,val){
+      modulesData[mi].submodules[si].title=val;
+      const display=document.getElementById("editor-sub-title-display");
+      if(display)display.textContent=val||"Untitled";
+      renderSidebar();
+    };
+
+    // ── Unified sub-module blocks (text + image + video mixed, draggable) ────────
+    function initSubBlocks(mi, si) {
+      const sub = modulesData[mi].submodules[si];
+      // If already has unified blocks array, use it
+      if (sub.blocks) return;
+      // Build unified blocks from separate arrays (for backwards compat)
+      const blocks = [];
+      (sub.contentBlocks||[]).forEach(b => blocks.push({type:"text", tempId:`t${Date.now()}${Math.random()}`, text:b.text||""}));
+      (sub.images||[]).forEach(img => blocks.push({type:"image", tempId:`i${Date.now()}${Math.random()}`, url:img.url||"", caption:img.caption||""}));
+      (sub.videos||[]).forEach(vid => blocks.push({type:"video", tempId:`v${Date.now()}${Math.random()}`, title:vid.title||"", youtubeId:vid.youtubeId||""}));
+      sub.blocks = blocks;
+    }
+
+    function addSubBlock(mi, si, type) {
+      const sub = modulesData[mi].submodules[si];
+      if (!sub.blocks) initSubBlocks(mi, si);
+      if (type==="text")  sub.blocks.push({type:"text",  tempId:`t${Date.now()}`, text:""});
+      if (type==="image") sub.blocks.push({type:"image", tempId:`i${Date.now()}`, url:"", caption:""});
+      if (type==="video") sub.blocks.push({type:"video", tempId:`v${Date.now()}`, title:"", youtubeId:""});
+      renderSubBlocks(mi, si);
+      // Scroll to bottom of list
+      setTimeout(()=>{ const l=document.getElementById("sub-blocks-list"); if(l) l.lastElementChild?.scrollIntoView({behavior:"smooth"}); }, 50);
+    }
+
+    function updateImgPreview(div, url, scale) {
+      let prev = div.querySelector(".img-preview");
+      if (url) {
+        if (!prev) { prev=document.createElement("div"); prev.className="img-preview"; div.appendChild(prev); }
+        prev.innerHTML=`<img src="${url}" style="width:${scale||100}%;border-radius:var(--radius);border:1px solid var(--border);"/>`;
+      } else if (prev) { prev.remove(); }
+    }
+
+    let subBlockDragSrc = null;
+
+    function renderSubBlocks(mi, si) {
+      const list = document.getElementById("sub-blocks-list"); if(!list) return;
+      list.innerHTML = "";
+      const sub = modulesData[mi].submodules[si];
+      const blocks = sub.blocks || [];
+
+      if (!blocks.length) {
+        list.innerHTML = `<p style="color:var(--text3);font-size:13px;margin-bottom:8px;font-family:var(--font);">No content yet — add text, images, or videos below.</p>`;
+        return;
+      }
+
+      blocks.forEach((block, bi) => {
+        const div = document.createElement("div");
+        div.className = "item-card";
+        div.draggable = true;
+        div.dataset.bi = bi;
+        div.style.cssText = "flex-direction:column;gap:8px;";
+
+        // Type label + drag handle + delete
+        const header = document.createElement("div");
+        header.style.cssText = "display:flex;align-items:center;gap:8px;";
+        const handle = document.createElement("div");
+        handle.className = "drag-handle"; handle.textContent = "⠿"; handle.title = "Drag to reorder";
+        const typeTag = document.createElement("span");
+        typeTag.style.cssText = "font-family:var(--cinzel);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:4px;flex-shrink:0;";
+        const delBtn = document.createElement("button");
+        delBtn.className = "delete-btn"; delBtn.textContent = "✕";
+        delBtn.onclick = () => { if(confirm("Delete this block?")) { blocks.splice(bi,1); renderSubBlocks(mi,si); } };
+
+        if (block.type === "text") {
+          typeTag.textContent = "Text";
+          typeTag.style.background = "var(--surface3)";
+          typeTag.style.color = "var(--text3)";
+          header.appendChild(handle); header.appendChild(typeTag);
+          const spacer = document.createElement("div"); spacer.style.flex="1";
+          header.appendChild(spacer); header.appendChild(delBtn);
+          div.appendChild(header);
+
+          // Rich text toolbar
+          const toolbar = document.createElement("div");
+          toolbar.style.cssText="display:flex;gap:4px;flex-wrap:wrap;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;";
+          const toolbarBtns = [
+            {cmd:"bold",       label:"<b>B</b>"},
+            {cmd:"italic",     label:"<i>I</i>"},
+            {cmd:"underline",  label:"<u>U</u>"},
+            {cmd:"strikethrough", label:"<s>S</s>"},
+            {cmd:"insertUnorderedList", label:"• List"},
+            {cmd:"insertOrderedList",   label:"1. List"},
+            {cmd:"indent",     label:"→"},
+            {cmd:"outdent",    label:"←"},
+            {sep:true},
+            {cmd:"formatBlock", val:"h2", label:"H2"},
+            {cmd:"formatBlock", val:"h3", label:"H3"},
+            {cmd:"formatBlock", val:"p",  label:"¶"},
+            {sep:true},
+            {cmd:"fontSize", val:"1", label:"A-"},
+            {cmd:"fontSize", val:"4", label:"A+"},
+            {cmd:"removeFormat", label:"✕ fmt"},
+          ];
+          toolbarBtns.forEach(btn => {
+            if (btn.sep) {
+              const sep = document.createElement("span");
+              sep.style.cssText="width:1px;background:var(--border2);margin:2px 4px;align-self:stretch;";
+              toolbar.appendChild(sep);
+              return;
+            }
+            const b = document.createElement("button");
+            b.innerHTML = btn.label;
+            b.title = btn.cmd;
+            b.style.cssText="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;cursor:pointer;font-size:12px;color:var(--text);min-width:28px;";
+            b.onmousedown = (e) => {
+              e.preventDefault(); // keep focus in editor
+              if (btn.val) document.execCommand(btn.cmd, false, btn.val);
+              else document.execCommand(btn.cmd, false, null);
+            };
+            toolbar.appendChild(b);
+          });
+          div.appendChild(toolbar);
+
+          // Editable content area
+          const editor = document.createElement("div");
+          editor.contentEditable = "true";
+          editor.innerHTML = block.text||"";
+          editor.style.cssText="background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);padding:10px 14px;color:var(--text);font-family:var(--font);font-size:14px;min-height:80px;line-height:1.7;outline:none;";
+          editor.addEventListener("input",()=>{ blocks[bi].text=editor.innerHTML; });
+          editor.addEventListener("focus",()=>{ editor.style.borderColor="var(--gold)"; toolbar.style.borderColor="var(--gold)"; });
+          editor.addEventListener("blur",()=>{ editor.style.borderColor="var(--border)"; toolbar.style.borderColor="var(--border)"; });
+          // Allow text selection without triggering drag
+          editor.addEventListener("mousedown", e=>e.stopPropagation());
+          div.appendChild(editor);
+        }
+
+        else if (block.type === "image") {
+          typeTag.textContent = "Image";
+          typeTag.style.background = "#1a2a1a";
+          typeTag.style.color = "#6abf6a";
+          header.appendChild(handle); header.appendChild(typeTag);
+          const spacer = document.createElement("div"); spacer.style.flex="1";
+          header.appendChild(spacer); header.appendChild(delBtn);
+          div.appendChild(header);
+          const urlIn = makeEl("input","Image URL (https://...)",block.url||"",e=>{
+            blocks[bi].url=e.target.value;
+            updateImgPreview(div, e.target.value, block.scale||100);
+          },"input-std");
+          const capIn = makeEl("input","Caption (optional)",block.caption||"",e=>blocks[bi].caption=e.target.value,"input-std");
+
+          // Scale slider
+          const scaleWrap = document.createElement("div");
+          scaleWrap.style.cssText="display:flex;align-items:center;gap:10px;margin-top:4px;";
+          const scaleLabel = document.createElement("label");
+          scaleLabel.style.cssText="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);white-space:nowrap;";
+          scaleLabel.textContent="Width: "+(block.scale||100)+"%";
+          const scaleSlider = document.createElement("input");
+          scaleSlider.type="range"; scaleSlider.min="10"; scaleSlider.max="100";
+          scaleSlider.value=block.scale||100;
+          scaleSlider.style.cssText="flex:1;accent-color:var(--gold);";
+          scaleSlider.addEventListener("input",()=>{
+            blocks[bi].scale=parseInt(scaleSlider.value);
+            scaleLabel.textContent="Width: "+scaleSlider.value+"%";
+            const prev=div.querySelector(".img-preview img");
+            if(prev) prev.style.width=scaleSlider.value+"%";
+          });
+          scaleWrap.appendChild(scaleLabel); scaleWrap.appendChild(scaleSlider);
+
+          div.appendChild(urlIn); div.appendChild(capIn); div.appendChild(scaleWrap);
+          if(block.url){
+            const prev=document.createElement("div");prev.className="img-preview";
+            prev.style.textAlign=block.align||"left";
+            prev.innerHTML=`<img src="${block.url}" style="width:${block.scale||100}%;border-radius:var(--radius);border:1px solid var(--border);"/>`;
+            div.appendChild(prev);
+          }
+        }
+
+        else if (block.type === "video") {
+          typeTag.textContent = "Video";
+          typeTag.style.background = "#1a1a2a";
+          typeTag.style.color = "#6a8abf";
+          header.appendChild(handle); header.appendChild(typeTag);
+          const spacer = document.createElement("div"); spacer.style.flex="1";
+          header.appendChild(spacer); header.appendChild(delBtn);
+          div.appendChild(header);
+          const titleIn = makeEl("input","Video title",block.title||"",e=>blocks[bi].title=e.target.value,"input-std");
+          const urlIn = makeEl("input","YouTube URL or video ID",block.youtubeId||"",e=>{
+            let val=e.target.value.trim(); const m2=val.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/); if(m2)val=m2[1];
+            blocks[bi].youtubeId=val;
+            let prev=div.querySelector(".youtube-preview");
+            if(val.length>=11){if(!prev){prev=document.createElement("div");prev.className="youtube-preview";div.appendChild(prev);}prev.innerHTML=`<iframe src="https://www.youtube.com/embed/${val}?rel=0" allowfullscreen></iframe>`;}
+            else if(prev){prev.remove();}
+          },"input-std");
+          div.appendChild(titleIn); div.appendChild(urlIn);
+          if(block.youtubeId){const prev=document.createElement("div");prev.className="youtube-preview";prev.innerHTML=`<iframe src="https://www.youtube.com/embed/${block.youtubeId}?rel=0" allowfullscreen></iframe>`;div.appendChild(prev);}
+        }
+
+        // Drag events
+        div.addEventListener("dragstart", e=>{ subBlockDragSrc=div; div.style.opacity="0.4"; e.dataTransfer.effectAllowed="move"; });
+        div.addEventListener("dragend", ()=>{ div.style.opacity="1"; subBlockDragSrc=null; });
+        div.addEventListener("dragover", e=>{ e.preventDefault(); div.style.outline="1px solid var(--gold-border)"; });
+        div.addEventListener("dragleave", ()=>{ div.style.outline=""; });
+        div.addEventListener("drop", e=>{
+          e.preventDefault(); div.style.outline="";
+          if(!subBlockDragSrc||subBlockDragSrc===div)return;
+          const fromIdx=parseInt(subBlockDragSrc.dataset.bi), toIdx=parseInt(div.dataset.bi);
+          const item=blocks.splice(fromIdx,1)[0]; blocks.splice(toIdx,0,item);
+          renderSubBlocks(mi,si);
+        });
+
+        list.appendChild(div);
+      });
+    }
+
+    // Keep old functions as stubs so nothing breaks if called elsewhere
+    function renderSubContentList(mi,si){ renderSubBlocks(mi,si); }
+    function renderSubImagesList(mi,si){ renderSubBlocks(mi,si); }
+    function renderSubVideosList(mi,si){ renderSubBlocks(mi,si); }
+
+    // ── Save module ───────────────────────────────────────────────────────────
+    window.saveModule = async function(mi, silent=false) {
+      const btn=document.getElementById("save-mod-btn");
+      if (btn) { btn.textContent="Saving..."; btn.disabled=true; }
+      const mod=modulesData[mi];
+      try {
+        mod.title=document.getElementById("mod-title").value.trim();
+        mod.description=document.getElementById("mod-desc").value.trim();
+        mod.bannerImage=document.getElementById("mod-banner").value.trim();
+
+        mod.order=mi+1;
+
+        // If this is a new module with a timestamp ID, give it a clean ID
+        if (mod._new && mod.id.startsWith("module_") && mod.id.length > 15) {
+          // Generate a clean ID like module_7, module_8 etc
+          const existingNums = modulesData
+            .filter(m=>!m._new)
+            .map(m=>parseInt(m.id.replace("module_","")))
+            .filter(n=>!isNaN(n));
+          const maxNum = existingNums.length ? Math.max(...existingNums) : 0;
+          mod.id = `module_${maxNum + 1}`;
+        }
+
+        // Save this module only (not all modules — avoids overwriting others with bad data)
+        const modContent = (mod.contentBlocks||[]).map(b=>b.text||"").filter(t=>t).join("\n\n");
+        const isQuizMod = mod.moduleType === "quiz";
+        await setDoc(getModuleDocRef(mod.id),{
+          id:mod.id,
+          order:mi+1,
+          title:mod.title||"",
+          description:mod.description||"",
+          content:modContent,
+          bannerImage:mod.bannerImage||"",
+          moduleType:mod.moduleType||"regular",
+          passingScore: isQuizMod ? 23 : (mod.passingScore||4),
+          totalQuestions: isQuizMod ? 30 : (mod.totalQuestions||5)
+        });
+
+        // Also update the order field on all other modules so ordering persists
+        await Promise.all(modulesData.filter((_,i)=>i!==mi).map((m,_)=>{
+          const idx = modulesData.indexOf(m);
+          return setDoc(getModuleDocRef(m.id),{order:idx+1},{merge:true});
+        }));
+
+        // Save videos
+        const oldVids=await getDocs(getSubcollectionRef(mod.id,"videos"));
+        await Promise.all(oldVids.docs.map(d=>deleteDoc(d.ref)));
+        await Promise.all(mod.videos.map((v,i)=>setDoc(doc(getSubcollectionRef(mod.id,"videos"),v.id||`video_${i+1}`),{id:v.id||`video_${i+1}`,order:i+1,title:v.title||"",youtubeId:v.youtubeId||""})));
+
+        // Save questions
+        const oldQues=await getDocs(getSubcollectionRef(mod.id,"questions"));
+        await Promise.all(oldQues.docs.map(d=>deleteDoc(d.ref)));
+        await Promise.all(mod.questions.map((q,i)=>setDoc(doc(getSubcollectionRef(mod.id,"questions"),q.id||`q${i+1}`),{order:i+1,question:q.question||"",options:q.options||["","","",""],correctIndex:q.correctIndex||0})));
+
+        mod._new=false;
+        renderSidebar();
+        markSaved();
+        if (!silent) showToast("Module saved.","success");
+      } catch(e){ showToast("Save failed: "+e.message,"error"); console.error(e); }
+      finally{ if(btn){btn.textContent="Save Module";btn.disabled=false;} }
+    };
+
+    // ── Save submodule ────────────────────────────────────────────────────────
+    function getSubmoduleCollRef(moduleId) {
+      if (currentCourse === "academy") return collection(db,"modules",moduleId,"submodules");
+      return collection(db,"courses",currentCourse,"modules",moduleId,"submodules");
+    }
+    function getSubmoduleDocRef(moduleId, subId) {
+      if (currentCourse === "academy") return doc(db,"modules",moduleId,"submodules",subId);
+      return doc(db,"courses",currentCourse,"modules",moduleId,"submodules",subId);
+    }
+
+    window.saveSubmodule = async function(mi, si, silent=false) {
+      const btn=document.getElementById("save-sub-btn");
+      if (btn) { btn.textContent="Saving..."; btn.disabled=true; }
+      const mod=modulesData[mi], sub=mod.submodules[si];
+      try {
+        sub.order=document.getElementById("sub-order").value.trim();
+        sub.title=document.getElementById("sub-title").value.trim();
+        sub.description=document.getElementById("sub-desc").value.trim();
+        sub.bannerImage=document.getElementById("sub-banner").value.trim();
+
+        // Serialize unified blocks back into separate arrays for Firestore + trainee page
+        const blocks = sub.blocks || [];
+        // Store blocks as JSON — preserves all content including newlines within blocks
+        const cleanBlocks = blocks.map(b => {
+          if (b.type==="text")  return {type:"text",  text:b.text||""};
+          if (b.type==="image") return {type:"image", url:b.url||"", caption:b.caption||"", scale:b.scale||100};
+          if (b.type==="video") return {type:"video", title:b.title||"", youtubeId:b.youtubeId||""};
+          return null;
+        }).filter(Boolean);
+        const blocksJson = JSON.stringify(cleanBlocks);
+
+        await setDoc(getSubmoduleDocRef(mod.id,sub.id),{
+          id:sub.id, order:sub.order||`${mi+1}.${si+1}`, title:sub.title||"",
+          description:sub.description||"", bannerImage:sub.bannerImage||"",
+          blocksJson
+        });
+
+        // Also save separate video/image subcollections for the trainee page (backwards compat)
+        const videoBlocks = cleanBlocks.filter(b=>b.type==="video");
+        const imageBlocks = cleanBlocks.filter(b=>b.type==="image");
+        const oldSV=await getDocs(collection(getSubmoduleDocRef(mod.id,sub.id),"videos"));
+        await Promise.all(oldSV.docs.map(d=>deleteDoc(d.ref)));
+        await Promise.all(videoBlocks.map((v,i)=>setDoc(doc(collection(getSubmoduleDocRef(mod.id,sub.id),"videos"),`sv_${i+1}`),{id:`sv_${i+1}`,order:i+1,title:v.title||"",youtubeId:v.youtubeId||""})));
+
+        const oldSI=await getDocs(collection(getSubmoduleDocRef(mod.id,sub.id),"images"));
+        await Promise.all(oldSI.docs.map(d=>deleteDoc(d.ref)));
+        await Promise.all(imageBlocks.map((img,i)=>setDoc(doc(collection(getSubmoduleDocRef(mod.id,sub.id),"images"),`img_${i+1}`),{id:`img_${i+1}`,order:i+1,url:img.url||"",caption:img.caption||""})));
+
+        // Save subsections (sub-sub-modules)
+        const oldSS=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"subsections"));
+        await Promise.all(oldSS.docs.map(d=>deleteDoc(d.ref)));
+        await Promise.all((sub.subsections||[]).map(async (ss,ssi)=>{
+          const ssContent=(ss.contentBlocks||[]).map(b=>b.text||"").filter(t=>t).join("\n\n");
+          await setDoc(doc(db,"modules",mod.id,"submodules",sub.id,"subsections",ss.id||`ss_${ssi+1}`),{
+            id:ss.id||`ss_${ssi+1}`,order:ss.order||"",title:ss.title||"",
+            description:ss.description||"",content:ssContent,bannerImage:ss.bannerImage||""
+          });
+          // Save subsection videos
+          const oldSSV=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"subsections",ss.id,"videos"));
+          await Promise.all(oldSSV.docs.map(d=>deleteDoc(d.ref)));
+          await Promise.all((ss.videos||[]).map((v,vi)=>setDoc(doc(db,"modules",mod.id,"submodules",sub.id,"subsections",ss.id,"videos",v.id||`ssv_${vi+1}`),{id:v.id||`ssv_${vi+1}`,order:vi+1,title:v.title||"",youtubeId:v.youtubeId||""})));
+          // Save subsection images
+          const oldSSI=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"subsections",ss.id,"images"));
+          await Promise.all(oldSSI.docs.map(d=>deleteDoc(d.ref)));
+          await Promise.all((ss.images||[]).map((img,ii)=>setDoc(doc(db,"modules",mod.id,"submodules",sub.id,"subsections",ss.id,"images",img.id||`ssi_${ii+1}`),{id:img.id||`ssi_${ii+1}`,order:ii+1,url:img.url||"",caption:img.caption||""})));
+        }));
+
+        sub._new=false;
+        renderSidebar();
+        markSaved();
+        if (!silent) showToast("Sub-module saved.","success");
+      } catch(e){ showToast("Save failed: "+e.message,"error"); console.error(e); }
+      finally{ if(btn){btn.textContent="Save Sub-module";btn.disabled=false;} }
+    };
+
+    // ── Item drag (videos, questions, content blocks) ─────────────────────────
+    function addItemDrag(el, type, mi, si, rerender) {
+      el.addEventListener("dragstart",e=>{ dragSrc=el; dragType=type; el.classList.add("dragging"); e.dataTransfer.effectAllowed="move"; });
+      el.addEventListener("dragend",()=>{ el.classList.remove("dragging"); dragSrc=null; });
+      el.addEventListener("dragover",e=>e.preventDefault());
+      el.addEventListener("drop",e=>{
+        e.preventDefault();
+        if(!dragSrc||dragSrc===el||dragType!==type)return;
+        const from=parseInt(dragSrc.dataset.idx),to=parseInt(el.dataset.idx);
+        const mod=modulesData[mi];
+        let arr;
+        if(type==="mod-content")arr=mod.contentBlocks;
+        else if(type==="mod-video")arr=mod.videos;
+        else if(type==="mod-question")arr=mod.questions;
+        if(arr){const item=arr.splice(from,1)[0];arr.splice(to,0,item);rerender(mi);}
+      });
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function makeEl(tag, placeholder, value, onChange, className) {
+      const el=document.createElement(tag==="textarea"?"textarea":"input");
+      if(tag!=="textarea")el.type="text";
+      el.placeholder=placeholder; el.value=value; el.className=className||"input-std";
+      el.addEventListener("input",onChange);
+      return el;
+    }
+
+    function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+    // ── TRAINEES (unchanged) ──────────────────────────────────────────────────
+    window.handleAddTrainee = async function() {
+      const name=document.getElementById("new-name").value.trim();
+      const email=document.getElementById("new-email").value.trim();
+      const password=document.getElementById("new-password").value.trim();
+      const errEl=document.getElementById("add-trainee-error");
+      const btn=document.getElementById("add-trainee-btn");
+      errEl.style.display="none";
+      if(!name||!email||!password){errEl.textContent="Please fill in all fields.";errEl.style.display="block";return;}
+      if(password.length<6){errEl.textContent="Password must be at least 6 characters.";errEl.style.display="block";return;}
+      btn.textContent="Adding...";btn.disabled=true;
+      try {
+        const result=await createTrainee(email,password,name);
+        // Store temp password in Firestore so admin can look it up
+        await setDoc(doc(db,"users",result.uid),{tempPassword:password},{merge:true});
+        showToast(`${name} added!`,"success");
+        document.getElementById("new-name").value="";
+        document.getElementById("new-email").value="";
+        document.getElementById("new-password").value="";
+        allTrainees.push({id:result.uid,name,email,role:"trainee",certified:false,tempPassword:password});
+        progressMap[result.uid]={};certMap[result.uid]={};
+        renderStats();renderTrainees();
+      } catch(e){
+        let msg="Failed to add trainee.";
+        if(e.code==="auth/email-already-in-use")msg="Email already registered.";
+        else if(e.code==="auth/invalid-email")msg="Invalid email.";
+        errEl.textContent=msg;errEl.style.display="block";
+      } finally{btn.textContent="Add Trainee";btn.disabled=false;}
+    };
+
+    async function loadTrainees() {
+      const [usersSnap,certsSnap]=await Promise.all([getDocs(collection(db,"users")),getDocs(collection(db,"certifications"))]);
+      allTrainees=usersSnap.docs.map(d=>({id:d.id,...d.data()})).filter(u=>u.role!=="admin");
+      certsSnap.forEach(d=>{certMap[d.id]=d.data();});
+      await Promise.all(allTrainees.map(async u=>{
+        const snap=await getDocs(collection(db,"users",u.id,"progress"));
+        const p={};snap.forEach(d=>{p[d.id]=d.data();});progressMap[u.id]=p;
+      }));
+      renderStats();renderTrainees();
+    }
+
+    function countPassed(prog){return Object.values(prog||{}).filter(p=>p.status==="passed").length;}
+
+    function renderStats(){
+      document.getElementById("stats-grid").innerHTML=[
+        {label:"Total Trainees",value:allTrainees.length},
+        {label:"Certified",value:allTrainees.filter(t=>t.certified).length},
+        {label:"In Progress",value:allTrainees.filter(t=>!t.certified&&countPassed(progressMap[t.id])>0).length},
+        {label:"Not Started",value:allTrainees.filter(t=>countPassed(progressMap[t.id])===0&&!t.certified).length},
+      ].map(s=>`<div class="stat-card"><div class="stat-label">${s.label}</div><div class="stat-num">${s.value}</div></div>`).join("");
+      document.getElementById("trainee-count").textContent=`${allTrainees.length} total`;
+    }
+
+    function renderTrainees(){
+      const list=document.getElementById("trainee-list");
+      list.innerHTML="";
+      if(!allTrainees.length){list.innerHTML=`<div style="padding:3rem;text-align:center;font-family:var(--serif);font-style:italic;color:var(--text3);">No trainees yet.</div>`;return;}
+      [...allTrainees].sort((a,b)=>countPassed(progressMap[b.id])-countPassed(progressMap[a.id])).forEach(trainee=>{
+        const passed=countPassed(progressMap[trainee.id]),pct=Math.round((passed/MODULES_COUNT)*100),cert=certMap[trainee.id]||{};
+        const dots=SIGNOFF_STEPS.map(s=>`<div title="${s.label}" style="width:8px;height:8px;border-radius:50%;background:${cert[s.key]?"var(--success)":"var(--surface3)"};border:1px solid ${cert[s.key]?"var(--success)":"var(--border2)"};"></div>`).join("");
+        const row=document.createElement("div");row.className="trainee-row";row.id=`row-${trainee.id}`;
+        row.innerHTML=`
+          <div class="trainee-header" onclick="toggleTrainee('${trainee.id}')">
+            <div style="width:36px;height:36px;border-radius:50%;border:1px solid ${trainee.certified?"var(--success-border)":"var(--border2)"};background:${trainee.certified?"var(--success-bg)":"var(--surface2)"};display:flex;align-items:center;justify-content:center;font-family:var(--cinzel);font-size:12px;color:${trainee.certified?"var(--success)":"var(--text3)"};flex-shrink:0;">${trainee.certified?"✓":trainee.name?.charAt(0)||"?"}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-family:var(--cinzel);font-size:13px;font-weight:600;letter-spacing:.04em;">${trainee.name}${trainee.certified?`<span class="badge badge-pass" style="margin-left:8px;font-size:9px;">Certified</span>`:""}</div>
+              <div style="font-size:12px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${trainee.email}</div>
+            </div>
+            <div style="width:120px;flex-shrink:0;">
+              <div style="font-family:var(--cinzel);font-size:10px;color:var(--text3);text-align:right;margin-bottom:4px;">${passed}/${MODULES_COUNT}</div>
+              <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
+            </div>
+            ${trainee.tier ? `<div style="font-size:11px;padding:0 8px;flex-shrink:0;">${{certified_host:"🥉",verified_host:"🥈",audio_alchemist:"🥇"}[trainee.tier]||""}</div>` : ""}
+            <button onclick="event.stopPropagation();deleteTrainee('${trainee.id}','${(trainee.name||"").replace(/'/g,"\\'")}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:4px 6px;border-radius:4px;flex-shrink:0;" title="Delete trainee" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'">✕</button>
+            ${trainee.tier ? `<span style="font-size:13px;flex-shrink:0;padding:0 4px;">${{certified_host:"🥉",verified_host:"🥈",audio_alchemist:"🥇"}[trainee.tier]||""}</span>` : ""}
+            <div class="chevron" id="chev-${trainee.id}">▾</div>
+          </div>
+          <div class="trainee-detail" id="detail-${trainee.id}">${buildDetail(trainee,cert)}</div>`;
+        list.appendChild(row);
+      });
+    }
+
+    function buildDetail(trainee,cert){
+      let qr="";
+      for(let i=1;i<=MODULES_COUNT;i++){const mId=`module_${i}`,mp=progressMap[trainee.id]?.[mId];let txt="Not started",c="var(--text3)";if(mp?.status==="passed"){txt=`✓ ${mp.quizScore}/${mp.totalQuestions||5}`;c="var(--success)";}else if(mp?.status==="failed"){txt=`✗ ${mp.quizScore}/${mp.totalQuestions||5}`;c="var(--danger)";}else if(mp?.status==="in_progress"){txt="In progress";c="var(--gold)";}qr+=`<div class="quiz-line"><span style="color:var(--text2);">Module ${i}</span><span style="color:${c};">${txt}</span></div>`;}
+
+      const pwDisplay = trainee.tempPassword
+        ? `<div id="pw-display-${trainee.id}" style="font-family:var(--font);font-size:14px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;letter-spacing:.08em;margin-bottom:8px;">••••••••</div>`
+        : `<div style="font-size:13px;color:var(--text3);font-family:var(--font);margin-bottom:8px;">No password stored yet.</div>`;
+
+      const pwCard = `
+        <div class="detail-card" style="min-width:0;">
+          <div class="detail-card-label">Login password</div>
+          ${pwDisplay}
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;">
+            ${trainee.tempPassword ? `<button class="btn btn-ghost btn-sm" id="pw-btn-${trainee.id}" onclick="togglePw('${trainee.id}','${trainee.tempPassword}')">Show password</button>` : ""}
+            <button class="btn btn-ghost btn-sm" onclick="updatePassword('${trainee.id}')">Set new password</button>
+          </div>
+          ${trainee.tempPassword ? `<p style="font-size:11px;color:var(--text3);font-family:var(--font);font-style:normal;margin-top:8px;">If they changed their own password, this won't reflect it.</p>` : ""}
+        </div>`;
+
+      const tierOptions = [
+        {val:"",label:"No tier yet"},
+        {val:"certified_host",label:"🥉 Certified Host"},
+        {val:"verified_host",label:"🥈 Verified Host"},
+        {val:"audio_alchemist",label:"🥇 Audio Alchemist"},
+      ];
+      const currentTier = trainee.tier||"";
+      const TIER_LABELS = {certified_host:"🥉 Certified Host",verified_host:"🥈 Verified Host",audio_alchemist:"🥇 Audio Alchemist"};
+      const profileCard = `
+        <div class="detail-card" style="min-width:0;overflow:hidden;">
+          <div class="detail-card-label">Host Profile</div>
+          ${currentTier
+            ? `<div style="margin-bottom:10px;padding:5px 12px;background:var(--gold-dim);border:1px solid var(--gold-border);border-radius:99px;display:inline-flex;align-items:center;gap:6px;font-family:var(--cinzel);font-size:11px;color:var(--gold2);">${TIER_LABELS[currentTier]||currentTier}</div>`
+            : `<div style="margin-bottom:10px;font-family:var(--cinzel);font-size:11px;color:var(--text3);">No tier yet</div>`
+          }
+          <div style="margin-bottom:8px;">
+            <label style="font-size:10px;color:var(--text3);font-family:var(--cinzel);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:4px;">DJ / Stage Name</label>
+            <input type="text" id="djname-${trainee.id}" value="${trainee.djName||""}"
+              placeholder="DJ Midnight"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;width:100%;box-sizing:border-box;"/>
+          </div>
+          <div style="margin-bottom:8px;">
+            <label style="font-size:10px;color:var(--text3);font-family:var(--cinzel);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:4px;">Photo URL (public lookup)</label>
+            <input type="text" id="photo-${trainee.id}" value="${trainee.photoUrl||""}"
+              placeholder="https://..."
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;width:100%;box-sizing:border-box;"/>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:10px;color:var(--text3);font-family:var(--cinzel);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:4px;">Change Tier</label>
+            <select id="tier-${trainee.id}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;width:100%;box-sizing:border-box;">
+              ${tierOptions.map(o=>`<option value="${o.val}" ${currentTier===o.val?"selected":""}>${o.label}</option>`).join("")}
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn btn-primary btn-sm" onclick="saveProfile('${trainee.id}')">Save Profile</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="deleteTrainee('${trainee.id}','${(trainee.name||"").replace(/'/g,"\\'")}')">Delete</button>
+          </div>
+        </div>`;
+
+      const COURSE_DEFS = [
+        {id:"certification",label:"Host Certification",lockedKey:"certificationLocked"},
+        {id:"academy",label:"Belladonna Academy",lockedKey:"academyLocked"},
+        {id:"trivia",label:"Trivia Time Transfer",lockedKey:"triviaLocked"},
+      ];
+      const accessCard = `
+        <div class="detail-card" style="min-width:0;">
+          <div class="detail-card-label">Course Access</div>
+          <p style="font-size:12px;color:var(--text3);font-family:var(--font);margin-bottom:12px;">☑ Checked = Locked &nbsp;·&nbsp; Unchecked = Unlocked</p>
+          ${COURSE_DEFS.map(c => {
+            const isLocked = trainee[c.lockedKey] !== false;
+            return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <input type="checkbox" id="lock-${c.id}-${trainee.id}"
+                ${isLocked ? "checked" : ""}
+                style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex-shrink:0;"
+                onchange="toggleCourseAccess('${trainee.id}','${c.lockedKey}',this.checked)"/>
+              <label for="lock-${c.id}-${trainee.id}" style="font-family:var(--cinzel);font-size:11px;letter-spacing:.04em;cursor:pointer;color:var(--text2);">${c.label}</label>
+            </div>`;
+          }).join("")}
+        </div>`;
+
+      return `<div class="detail-grid"><div class="detail-card"><div class="detail-card-label">Quiz Progress</div>${qr}</div>${pwCard}${accessCard}${profileCard}<div class="detail-card">
+          <div class="detail-card-label">Field Sign-offs</div>
+          ${SIGNOFF_STEPS.map(step=>{const done=cert[step.key],dv=cert[step.dateKey];const ds=dv?new Date(dv.seconds*1000).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"";return `<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+            <div style="margin-bottom:4px;">
+              <span style="font-family:var(--cinzel);font-size:11px;font-weight:600;color:var(--text2);">${step.label}</span>
+            </div>
+            <div style="margin-bottom:6px;">
+              ${done
+                ? `<span class="badge badge-pass" style="font-size:9px;">✓${ds?" · "+ds:""}</span>`
+                : `<span class="badge badge-locked" style="font-size:9px;">Pending</span>`}
+            </div>
+            ${done
+              ? `<button class="btn btn-ghost btn-sm" style="font-size:10px;" onclick="handleRevoke('${trainee.id}','${step.key}','${step.dateKey}')">Revoke</button>`
+              : `<button class="btn btn-primary btn-sm" style="font-size:10px;" onclick="handleSignOff('${trainee.id}','${step.key}','${step.dateKey}')">Sign Off ✓</button>`}
+          </div>`;}).join("")}
+        </div></div>`;
+    }
+
+    window.togglePw = function(uid, pw) {
+      const display = document.getElementById(`pw-display-${uid}`);
+      const btn = document.getElementById(`pw-btn-${uid}`);
+      if (!display) return;
+      const isHidden = display.textContent === "••••••••";
+      display.textContent = isHidden ? pw : "••••••••";
+      display.style.letterSpacing = isHidden ? "normal" : ".08em";
+      if (btn) btn.textContent = isHidden ? "Hide password" : "Show password";
+    };
+
+    window.updatePassword = async function(uid) {
+      const newPw = prompt("Enter a new password for this trainee (min 6 characters):");
+      if (!newPw) return;
+      if (newPw.length < 6) { alert("Password must be at least 6 characters."); return; }
+      try {
+        // Save to Firestore so admin can see it
+        await setDoc(doc(db,"users",uid),{tempPassword:newPw},{merge:true});
+        // Update local
+        const t = allTrainees.find(t=>t.id===uid);
+        if (t) t.tempPassword = newPw;
+        showToast("Password updated in records. Note: this does NOT change their Firebase Auth password — they'll need to use this to log in only if you also reset it in Firebase Auth console.","info");
+        // Refresh detail view
+        document.getElementById(`detail-${uid}`).innerHTML = buildDetail(t, certMap[uid]||{});
+      } catch(e) {
+        showToast("Failed to save password.","error");
+      }
+    };
+
+    window.toggleTrainee=function(uid){const d=document.getElementById(`detail-${uid}`),c=document.getElementById(`chev-${uid}`),h=d.previousElementSibling,o=d.classList.contains("open");d.classList.toggle("open",!o);c.classList.toggle("open",!o);h.classList.toggle("expanded",!o);};
+    window.handleSignOff=async function(uid,sk,dk){try{await adminSignOffFn({traineeUid:uid,stepKey:sk,dateKey:dk});const s=await getDoc(doc(db,"certifications",uid));certMap[uid]=s.exists()?s.data():{};const u=await getDoc(doc(db,"users",uid));if(u.data()?.certified){const t=allTrainees.find(t=>t.id===uid);if(t)t.certified=true;showToast(`${t?.name} is Certified!`,"success");}else{showToast("Sign-off recorded.","success");}document.getElementById(`detail-${uid}`).innerHTML=buildDetail(allTrainees.find(t=>t.id===uid),certMap[uid]||{});}catch(e){showToast("Sign-off failed.","error");}};
+    window.handleRevoke=async function(uid,sk,dk){if(!confirm("Revoke?"))return;try{await revokeSignOffFn({traineeUid:uid,stepKey:sk,dateKey:dk});const s=await getDoc(doc(db,"certifications",uid));certMap[uid]=s.exists()?s.data():{};const t=allTrainees.find(t=>t.id===uid);if(t)t.certified=false;showToast("Revoked.","info");document.getElementById(`detail-${uid}`).innerHTML=buildDetail(t,certMap[uid]||{});}catch(e){showToast("Failed.","error");}};
+
+    window.saveProfile = async function(uid) {
+      const djName = document.getElementById(`djname-${uid}`)?.value.trim()||"";
+      const photoUrl = document.getElementById(`photo-${uid}`)?.value.trim()||"";
+      const tier = document.getElementById(`tier-${uid}`)?.value||"";
+      try {
+        await setDoc(doc(db,"users",uid),{djName,photoUrl,tier},{merge:true});
+        const t=allTrainees.find(t=>t.id===uid);
+        if(t){t.djName=djName;t.photoUrl=photoUrl;t.tier=tier;}
+        showToast("Profile saved.","success");
+        document.getElementById(`detail-${uid}`).innerHTML=buildDetail(t,certMap[uid]||{});
+      } catch(e){showToast("Save failed: "+e.message,"error");}
+    };
+
+    window.deleteTrainee = async function(uid, name) {
+      const typed = prompt(`⚠️ Delete "${name}"?\n\nThis permanently removes their data. To also remove their login, go to Firebase Console → Authentication.\n\nType their name exactly to confirm:`);
+      if (typed===null) return;
+      if (typed.trim()!==name.trim()){alert("Name didn't match — not deleted.");return;}
+      try {
+        const progSnap=await getDocs(collection(db,"users",uid,"progress"));
+        await Promise.all(progSnap.docs.map(d=>deleteDoc(d.ref)));
+        await deleteDoc(doc(db,"certifications",uid)).catch(()=>{});
+        await deleteDoc(doc(db,"users",uid));
+        const idx=allTrainees.findIndex(t=>t.id===uid);
+        if(idx!==-1)allTrainees.splice(idx,1);
+        delete progressMap[uid];delete certMap[uid];
+        document.getElementById(`row-${uid}`)?.remove();
+        renderStats();
+        showToast(`${name} deleted.`,"success");
+      } catch(e){showToast("Delete failed: "+e.message,"error");}
+    };
+
+    window.saveProfile = async function(uid) {
+      const djName = document.getElementById(`djname-${uid}`)?.value.trim()||"";
+      const photoUrl = document.getElementById(`photo-${uid}`)?.value.trim()||"";
+      const tier = document.getElementById(`tier-${uid}`)?.value||"";
+      try {
+        await setDoc(doc(db,"users",uid),{djName,photoUrl,tier},{merge:true});
+        const t = allTrainees.find(t=>t.id===uid);
+        if (t) { t.djName=djName; t.photoUrl=photoUrl; t.tier=tier; }
+        showToast("Profile saved.","success");
+        document.getElementById(`detail-${uid}`).innerHTML=buildDetail(t,certMap[uid]||{});
+      } catch(e) { showToast("Save failed: "+e.message,"error"); }
+    };
+
+    window.deleteTrainee = async function(uid, name) {
+      const typed = prompt(`⚠️ Delete trainee "${name}"?\n\nThis removes their Firestore data. Their Firebase Auth account must be deleted manually in Firebase Console → Authentication.\n\nType their name exactly to confirm:`);
+      if (typed === null) return;
+      if (typed.trim() !== name.trim()) { alert("Name didn't match — trainee not deleted."); return; }
+      try {
+        const progSnap = await getDocs(collection(db,"users",uid,"progress"));
+        await Promise.all(progSnap.docs.map(d=>deleteDoc(d.ref)));
+        await deleteDoc(doc(db,"certifications",uid)).catch(()=>{});
+        await deleteDoc(doc(db,"users",uid));
+        const idx = allTrainees.findIndex(t=>t.id===uid);
+        if (idx !== -1) allTrainees.splice(idx,1);
+        delete progressMap[uid]; delete certMap[uid];
+        document.getElementById(`row-${uid}`)?.remove();
+        renderStats();
+        showToast(`${name} removed.`,"success");
+      } catch(e) { showToast("Delete failed: "+e.message,"error"); }
+    };
+    window.openPreview = function(moduleId, submoduleId) {
+      const modal = document.getElementById("preview-modal");
+      const container = document.getElementById("preview-content");
+      const nameEl = document.getElementById("preview-mod-name");
+      const mod = modulesData.find(m=>m.id===moduleId);
+      if (!mod) { showToast("Save the module first, then preview.", "info"); return; }
+
+      modal.style.display = "block";
+      document.body.style.overflow = "hidden";
+
+      if (submoduleId) {
+        const sub = mod.submodules?.find(s=>s.id===submoduleId);
+        if (nameEl) nameEl.textContent = `${mod.title} › ${sub?.title||"Sub-module"}`;
+        renderSubmodulePreview(container, mod, sub);
+      } else {
+        if (nameEl) nameEl.textContent = mod.title || "Module";
+        renderModulePreview(container, mod);
+      }
+    };
+
+    window.closePreview = function() {
+      document.getElementById("preview-modal").style.display = "none";
+      document.body.style.overflow = "";
+    };
+
+    function renderModulePreview(container, mod) {
+      let html = "";
+      if (mod.bannerImage) html += `<img src="${mod.bannerImage}" style="width:100%;height:320px;object-fit:cover;border-radius:12px;margin-bottom:1.5rem;border:1px solid var(--border);"/>`;
+      html += `<p style="font-family:var(--cinzel);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;">Module</p>`;
+      html += `<h1 style="font-family:'Bebas Neue',var(--display);font-size:2.4rem;letter-spacing:.06em;background:linear-gradient(135deg,#c9a84c,#f5df90,#c9a84c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:1rem;">${mod.title||""}</h1>`;
+      if (mod.description) html += `<p style="font-family:'EB Garamond',serif;font-style:italic;color:var(--text2);font-size:16px;line-height:1.8;margin-bottom:1.5rem;">${mod.description}</p>`;
+
+      // Content blocks
+      (mod.contentBlocks||[]).forEach(b => {
+        if (b.text) html += `<p style="font-family:'EB Garamond',serif;font-style:italic;font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:1.25rem;padding:1.25rem 1.5rem;background:var(--surface);border:1px solid var(--border);border-left:2px solid var(--gold-border);border-radius:12px;">${b.text.replace(/\n/g,"<br/>")}</p>`;
+      });
+
+      // Sub-modules list
+      if (mod.submodules?.length) {
+        html += `<div style="border-top:1px solid var(--border);margin:1.5rem 0;"></div>`;
+        html += `<p style="font-family:var(--cinzel);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:1rem;">In this module</p>`;
+        mod.submodules.forEach(sub => {
+          html += `<div style="padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--gold-border)'" onmouseout="this.style.borderColor='var(--border)'" onclick="openPreview('${mod.id}','${sub.id}')">
+            <div style="font-family:var(--cinzel);font-size:13px;font-weight:600;color:var(--text);">${sub.order?sub.order+" — ":""}${sub.title||"Untitled"}</div>
+            ${sub.description?`<div style="font-size:12px;color:var(--text3);margin-top:4px;">${sub.description}</div>`:""}
+          </div>`;
+        });
+      }
+
+      // Module-level videos
+      if (mod.videos?.filter(v=>v.youtubeId).length) {
+        html += `<div style="border-top:1px solid var(--border);margin:1.5rem 0;"></div>`;
+        html += renderVideosPreview(mod.videos);
+      }
+
+      // Quiz CTA
+      if (mod.questions?.length) {
+        html += `<div style="border-top:1px solid var(--border);margin:1.5rem 0;"></div>`;
+        html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+          <div>
+            <div style="font-family:var(--cinzel);font-size:13px;font-weight:600;letter-spacing:.04em;">Module Quiz</div>
+            <div style="font-size:13px;color:var(--text3);margin-top:4px;">Score ${mod.passingScore||4}/${mod.totalQuestions||mod.questions.length} or higher to pass.</div>
+          </div>
+          <button class="btn btn-primary" disabled style="opacity:.6;cursor:default;">Take Quiz</button>
+        </div>`;
+      }
+
+      container.innerHTML = html;
+    }
+
+    function renderSubmodulePreview(container, mod, sub) {
+      if (!sub) { container.innerHTML = "<p>Sub-module not found.</p>"; return; }
+      let html = "";
+      if (sub.bannerImage) html += `<img src="${sub.bannerImage}" style="width:100%;height:320px;object-fit:cover;border-radius:12px;margin-bottom:1.5rem;border:1px solid var(--border);"/>`;
+      html += `<p style="font-family:var(--cinzel);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;">${sub.order||""}</p>`;
+      html += `<h1 style="font-family:'Bebas Neue',var(--display);font-size:2.4rem;letter-spacing:.06em;background:linear-gradient(135deg,#c9a84c,#f5df90,#c9a84c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:1rem;">${sub.title||""}</h1>`;
+      if (sub.description) html += `<p style="font-family:'EB Garamond',serif;font-style:italic;color:var(--text2);font-size:16px;line-height:1.8;margin-bottom:1.5rem;">${sub.description}</p>`;
+
+      // Unified blocks (text, image, video in order)
+      const blocks = sub.blocks || [];
+      if (blocks.length) {
+        blocks.forEach(b => {
+          if (b.type==="text" && b.text) {
+            html += `<p style="font-family:'EB Garamond',serif;font-style:italic;font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:1.25rem;padding:1.25rem 1.5rem;background:var(--surface);border:1px solid var(--border);border-left:2px solid var(--gold-border);border-radius:12px;">${b.text.replace(/\n/g,"<br/>")}</p>`;
+          } else if (b.type==="image" && b.url) {
+            html += `<img src="${b.url}" style="width:100%;border-radius:12px;margin:1rem 0;border:1px solid var(--border);object-fit:cover;"/>`;
+            if (b.caption) html += `<p style="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);text-align:center;margin-top:-0.5rem;margin-bottom:1rem;">${b.caption}</p>`;
+          } else if (b.type==="video" && b.youtubeId) {
+            html += `<div style="position:relative;padding-bottom:56.25%;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:1rem;">
+              <iframe src="https://www.youtube.com/embed/${b.youtubeId}?rel=0" style="position:absolute;inset:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>
+            </div>`;
+            if (b.title) html += `<p style="font-family:var(--cinzel);font-size:12px;color:var(--text2);margin-bottom:1rem;">${b.title}</p>`;
+          }
+        });
+      } else {
+        // Fallback: old separate arrays
+        if (sub.contentBlocks?.length) {
+          sub.contentBlocks.forEach(b => {
+            if (b.text) html += `<p style="font-family:'EB Garamond',serif;font-style:italic;font-size:16px;color:var(--text2);line-height:1.8;margin-bottom:1.25rem;padding:1.25rem 1.5rem;background:var(--surface);border:1px solid var(--border);border-left:2px solid var(--gold-border);border-radius:12px;">${b.text.replace(/\n/g,"<br/>")}</p>`;
+          });
+        }
+        if (sub.videos?.filter(v=>v.youtubeId).length) html += renderVideosPreview(sub.videos);
+        if (sub.images?.filter(i=>i.url).length) {
+          sub.images.forEach(img => {
+            html += `<img src="${img.url}" style="width:100%;border-radius:12px;margin:1rem 0;border:1px solid var(--border);"/>`;
+            if (img.caption) html += `<p style="font-family:var(--cinzel);font-size:10px;color:var(--text3);text-align:center;">${img.caption}</p>`;
+          });
+        }
+      }
+
+      // Navigation
+      const si = mod.submodules?.indexOf(sub);
+      const prev = mod.submodules?.[si-1];
+      const next = mod.submodules?.[si+1];
+      html += `<div style="display:flex;justify-content:space-between;margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);">`;
+      html += prev ? `<button class="btn btn-ghost" onclick="openPreview('${mod.id}','${prev.id}')">← ${prev.title}</button>` : `<button class="btn btn-ghost" onclick="openPreview('${mod.id}')">← Module Overview</button>`;
+      html += next ? `<button class="btn btn-primary" onclick="openPreview('${mod.id}','${next.id}')">${next.title} →</button>` : `<span></span>`;
+      html += `</div>`;
+
+      container.innerHTML = html;
+    }
+
+    function renderVideosPreview(videos) {
+      const valid = videos.filter(v=>v.youtubeId);
+      if (!valid.length) return "";
+      return `<div style="position:relative;padding-bottom:56.25%;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:1rem;">
+        <iframe src="https://www.youtube.com/embed/${valid[0].youtubeId}?rel=0" style="position:absolute;inset:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>
+      </div>
+      ${valid[0].title?`<p style="font-family:var(--cinzel);font-size:12px;color:var(--text2);margin-bottom:1rem;">${valid[0].title}</p>`:""}
+      ${valid.length>1?`<div style="display:flex;gap:6px;flex-wrap:wrap;">${valid.slice(1).map(v=>`<span style="padding:5px 12px;border-radius:99px;font-family:var(--cinzel);font-size:10px;border:1px solid var(--border);color:var(--text3);">${v.title||"Video"}</span>`).join("")}</div>`:""}`
+    }
+
+    // ── Auto-save & unsaved changes tracking ──────────────────────────────────
+    let autoSaveTimer = null;
+    let hasUnsavedChanges = false;
+
+    function markUnsaved() {
+      hasUnsavedChanges = true;
+      const status = document.getElementById("autosave-status");
+      if (status) status.textContent = "Unsaved changes...";
+
+      // Reset the 30-second auto-save timer on every keystroke
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(async () => {
+        if (activeView === "module" && activeModuleIdx !== null) {
+          const status = document.getElementById("autosave-status");
+          if (status) status.textContent = "Auto-saving...";
+          await saveModule(activeModuleIdx, true); // true = silent (no toast)
+        } else if (activeView === "submodule" && activeModuleIdx !== null && activeSubmoduleIdx !== null) {
+          const status = document.getElementById("autosave-status");
+          if (status) status.textContent = "Auto-saving...";
+          await saveSubmodule(activeModuleIdx, activeSubmoduleIdx, true);
+        }
+      }, 3000); // 3 seconds after last change
+    }
+
+    function markSaved() {
+      hasUnsavedChanges = false;
+      clearTimeout(autoSaveTimer);
+      const status = document.getElementById("autosave-status");
+      if (status) {
+        status.textContent = "✓ Saved";
+        status.style.color = "var(--success)";
+        setTimeout(() => {
+          if (status) { status.textContent = ""; status.style.color = ""; }
+        }, 3000);
+      }
+    }
+
+    // Warn before closing/refreshing with unsaved changes
+    window.addEventListener("beforeunload", e => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    });
+
+    // Use document-level event delegation so listeners survive editor panel re-renders
+    document.addEventListener("input", e => {
+      if (e.target.closest("#editor-panel")) markUnsaved();
+    });
+    document.addEventListener("change", e => {
+      if (e.target.closest("#editor-panel")) markUnsaved();
+    });
+
+    // ── Course access toggle ─────────────────────────────────────────────────
+    window.toggleCourseAccess = async function(uid, lockedKey, isLocked) {
+      try {
+        await setDoc(doc(db,"users",uid),{[lockedKey]: isLocked},{merge:true});
+        const t = allTrainees.find(t=>t.id===uid);
+        if (t) t[lockedKey] = isLocked;
+        showToast(isLocked ? "Course locked." : "Course unlocked.", "success");
+      } catch(e) {
+        showToast("Failed to update access: "+e.message,"error");
+      }
+    };
+
+    // ── Settings tab ──────────────────────────────────────────────────────────
+    let codesData = [];
+    let settingsLoaded = false;
+
+    async function loadSettings() {
+      if (settingsLoaded) return;
+      settingsLoaded = true;
+      await Promise.all([loadCodes(), loadBlurbs()]);
+    }
+
+    async function loadCodes() {
+      try {
+        const snap = await getDocs(collection(db,"accessCodes"));
+        codesData = snap.docs.map(d=>({id:d.id,...d.data()}));
+        renderCodes();
+      } catch(e) {
+        document.getElementById("codes-list").innerHTML = `<p style="color:var(--danger);font-family:var(--font);">Error loading codes: ${e.message}</p>`;
+      }
+    }
+
+    function renderCodes() {
+      const list = document.getElementById("codes-list");
+      if (!codesData.length) {
+        list.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text3);font-family:var(--serif);font-style:italic;">No access codes yet. Add one above.</div>`;
+        return;
+      }
+      const COURSE_NAMES = {certification:"Host Certification",academy:"Belladonna Academy",trivia:"Trivia Time Transfer"};
+      list.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border);">
+              <th style="text-align:left;padding:8px 12px;font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:400;">Code</th>
+              <th style="text-align:left;padding:8px 12px;font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:400;">Unlocks</th>
+              <th style="text-align:left;padding:8px 12px;font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:400;">Status</th>
+              <th style="padding:8px 12px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${codesData.map(code=>`
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:10px 12px;font-family:var(--cinzel);font-size:13px;letter-spacing:.08em;color:var(--text);">${code.code||""}</td>
+                <td style="padding:10px 12px;font-size:13px;color:var(--text2);font-family:var(--font);">${COURSE_NAMES[code.course]||code.course||""}</td>
+                <td style="padding:10px 12px;">
+                  <span style="font-family:var(--cinzel);font-size:10px;letter-spacing:.08em;padding:3px 10px;border-radius:99px;border:1px solid;${code.active!==false?"background:var(--success-bg);border-color:var(--success-border);color:var(--success);":"background:var(--surface2);border-color:var(--border2);color:var(--text3);"}">
+                    ${code.active!==false?"Active":"Inactive"}
+                  </span>
+                </td>
+                <td style="padding:10px 12px;text-align:right;display:flex;gap:6px;justify-content:flex-end;">
+                  <button class="btn btn-ghost btn-sm" onclick="toggleCode('${code.id}',${code.active!==false})">${code.active!==false?"Deactivate":"Activate"}</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="deleteCode('${code.id}')">Delete</button>
+                </td>
+              </tr>`).join("")}
+          </tbody>
+        </table>`;
+    }
+
+    window.showAddCode = function() {
+      document.getElementById("add-code-form").style.display="block";
+      document.getElementById("new-code-value").focus();
+    };
+
+    window.saveNewCode = async function() {
+      const code = document.getElementById("new-code-value").value.trim().toUpperCase();
+      const course = document.getElementById("new-code-course").value;
+      const errEl = document.getElementById("add-code-error");
+      errEl.style.display="none";
+      if (!code) { errEl.textContent="Enter a code."; errEl.style.display="block"; return; }
+      if (codesData.find(c=>c.code===code)) { errEl.textContent="That code already exists."; errEl.style.display="block"; return; }
+      const COURSE_NAMES = {certification:"Host Certification",academy:"Belladonna Academy",trivia:"Trivia Time Transfer"};
+      try {
+        const newRef = doc(collection(db,"accessCodes"));
+        const data = {code, course, courseName:COURSE_NAMES[course]||course, active:true, createdAt:serverTimestamp()};
+        await setDoc(newRef, data);
+        codesData.push({id:newRef.id,...data});
+        renderCodes();
+        document.getElementById("new-code-value").value="";
+        document.getElementById("add-code-form").style.display="none";
+        showToast("Code added.","success");
+      } catch(e) { errEl.textContent="Failed: "+e.message; errEl.style.display="block"; }
+    };
+
+    window.toggleCode = async function(id, currentlyActive) {
+      try {
+        await setDoc(doc(db,"accessCodes",id),{active:!currentlyActive},{merge:true});
+        const c = codesData.find(c=>c.id===id);
+        if (c) c.active=!currentlyActive;
+        renderCodes();
+        showToast(currentlyActive?"Code deactivated.":"Code activated.","success");
+      } catch(e) { showToast("Failed: "+e.message,"error"); }
+    };
+
+    window.deleteCode = async function(id) {
+      if (!confirm("Delete this access code?")) return;
+      try {
+        await deleteDoc(doc(db,"accessCodes",id));
+        codesData = codesData.filter(c=>c.id!==id);
+        renderCodes();
+        showToast("Code deleted.","success");
+      } catch(e) { showToast("Failed: "+e.message,"error"); }
+    };
+
+    async function loadBlurbs() {
+      try {
+        const snap = await getDoc(doc(db,"settings","courses"));
+        const data = snap.exists() ? snap.data() : {};
+        const fields = ["certification","academy","trivia"];
+        fields.forEach(id => {
+          const tEl = document.getElementById(`tagline-${id}`);
+          const bEl = document.getElementById(`blurb-${id}`);
+          if (tEl) tEl.value = data[`${id}Tagline`]||"";
+          if (bEl) bEl.value = data[`${id}Blurb`]||"";
+        });
+      } catch(e) { console.error("loadBlurbs:",e); }
+    }
+
+    window.saveBlurbs = async function() {
+      const statusEl = document.getElementById("blurb-save-status");
+      statusEl.textContent = "Saving..."; statusEl.style.color="var(--text3)";
+      const fields = ["certification","academy","trivia"];
+      const data = {};
+      fields.forEach(id => {
+        data[`${id}Tagline`] = document.getElementById(`tagline-${id}`)?.value.trim()||"";
+        data[`${id}Blurb`] = document.getElementById(`blurb-${id}`)?.value.trim()||"";
+      });
+      try {
+        await setDoc(doc(db,"settings","courses"), data, {merge:true});
+        statusEl.textContent = "✓ Saved"; statusEl.style.color="var(--success)";
+        showToast("Course text saved.","success");
+        setTimeout(()=>statusEl.textContent="",3000);
+      } catch(e) {
+        statusEl.textContent = "Save failed: "+e.message; statusEl.style.color="var(--danger)";
+      }
+    };
+
+    // ── Resizable sidebar ─────────────────────────────────────────────────────
+    (function() {
+      const handle = document.getElementById("resize-handle");
+      const sidebar = document.getElementById("content-sidebar");
+      if (!handle || !sidebar) return;
+      let isResizing = false, startX = 0, startWidth = 0;
+
+      handle.addEventListener("mousedown", e => {
+        isResizing = true;
+        startX = e.clientX;
+        startWidth = sidebar.offsetWidth;
+        handle.classList.add("dragging");
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+      });
+
+      document.addEventListener("mousemove", e => {
+        if (!isResizing) return;
+        const newWidth = Math.min(500, Math.max(160, startWidth + (e.clientX - startX)));
+        sidebar.style.width = newWidth + "px";
+      });
+
+      document.addEventListener("mouseup", () => {
+        if (!isResizing) return;
+        isResizing = false;
+        handle.classList.remove("dragging");
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      });
+    })();
+
+    // Init empty editor state
+    document.getElementById("editor-panel").innerHTML = `<div class="empty-editor"><div style="font-size:2rem;">✦</div><p>Select a module or sub-module<br>from the sidebar to edit.</p></div>`;
+  </script>
+</body>
+</html>
