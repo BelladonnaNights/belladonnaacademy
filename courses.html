@@ -167,9 +167,17 @@
       const grid = document.getElementById("course-grid");
       grid.innerHTML = "";
 
-      COURSES.forEach(course => {
-        const locked = userProfile[course.lockedKey] !== false; // default locked unless explicitly false
-        const tagline = siteSettings[course.taglineKey] || course.defaultTagline;
+      // Sort by admin-defined order if available
+      const sorted = [...COURSES].sort((a,b) => {
+        const aO = parseInt(siteSettings[a.id+"Order"]) || 99;
+        const bO = parseInt(siteSettings[b.id+"Order"]) || 99;
+        return aO - bO;
+      });
+
+      sorted.forEach(course => {
+        const locked = userProfile[course.lockedKey] !== false;
+        const tagline = siteSettings[course.id+"Tagline"] || course.defaultTagline;
+        const bannerUrl = siteSettings[course.id+"Banner"] || "";
         const inProgress = userProfile[`${course.id}Progress`] === "in_progress";
         const completed = userProfile[`${course.id}Progress`] === "completed";
 
@@ -179,10 +187,14 @@
           ? `<span class="status-badge status-in-progress">● In Progress</span>`
           : "";
 
+        const bannerHtml = bannerUrl
+          ? `<img src="${bannerUrl}" style="width:100%;height:120px;object-fit:cover;display:block;" alt=""/>`
+          : `<div class="course-card-banner">${course.emoji}</div>`;
+
         const card = document.createElement("div");
         card.className = `course-card ${locked ? "locked" : ""}`;
         card.innerHTML = `
-          <div class="course-card-banner">${course.emoji}</div>
+          ${bannerHtml}
           <div class="course-card-body">
             <div class="course-card-label">${locked ? "🔒 Locked" : "Available"}</div>
             <div class="course-card-title">${course.name}</div>
@@ -200,10 +212,25 @@
     }
 
     function renderWhichSection() {
+      // Update section title from settings
+      const whichTitle = document.querySelector(".which-title");
+      if (whichTitle && siteSettings.whichSectionTitle) whichTitle.textContent = siteSettings.whichSectionTitle;
+
+      // Update page heading/subheading
+      const h1 = document.querySelector("h1.gold-text");
+      if (h1 && siteSettings.pageHeading) h1.textContent = siteSettings.pageHeading;
+
       const grid = document.getElementById("which-grid");
       grid.innerHTML = "";
-      COURSES.forEach(course => {
-        const blurb = siteSettings[course.blurbKey] || course.defaultBlurb;
+
+      const sorted = [...COURSES].sort((a,b) => {
+        const aO = parseInt(siteSettings[a.id+"Order"]) || 99;
+        const bO = parseInt(siteSettings[b.id+"Order"]) || 99;
+        return aO - bO;
+      });
+
+      sorted.forEach(course => {
+        const blurb = siteSettings[course.id+"Blurb"] || course.defaultBlurb;
         grid.innerHTML += `
           <div class="which-card">
             <div class="which-name">${course.emoji} ${course.name}</div>
