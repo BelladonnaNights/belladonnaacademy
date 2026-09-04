@@ -527,6 +527,12 @@
       const allSubsVisited = cached.submodules.length === 0 ||
         cached.submodules.every(s => viewedSubs.includes(s.id));
 
+      // Nav buttons go ABOVE the banner
+      const navHtml = `<div style="padding:1rem 2.5rem 0.5rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <a href="courses.html" class="btn btn-ghost btn-sm">← Courses</a>
+        ${isPreview ? '<a href="admin.html" class="btn btn-ghost btn-sm">← Admin</a>' : ''}
+      </div>`;
+
       // Banner goes full width OUTSIDE the padded body
       let bannerHtml = "";
       if (mod.bannerImage) {
@@ -536,10 +542,7 @@
       let html = "";
 
       // Navigation buttons
-      html += `<div style="margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <a href="dashboard.html?course=${selectedCourse}" class="btn btn-ghost btn-sm">← Dashboard</a>
-        ${isPreview ? '<a href="admin.html" class="btn btn-ghost btn-sm">← Back to admin</a>' : ''}
-      </div>`;
+
 
       html += `<p style="font-family:var(--cinzel);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;font-style:normal;">Module ${allModules.indexOf(mod)+1}</p>`;
       html += `<h1 class="gold-text" style="margin-bottom:1rem;">${mod.title||""}</h1>`;
@@ -600,7 +603,7 @@
       }
 
       // Render: banner full width on top, then padded body content
-      contentArea.innerHTML = bannerHtml + `<div class="content-body">${html}</div>`;
+      contentArea.innerHTML = navHtml + bannerHtml + `<div class="content-body">${html}</div>`;
     }
 
     async function showSubmodule(moduleId, submoduleId) {
@@ -646,26 +649,44 @@
       }
       await loadSubmoduleSidebar(moduleId);
 
+      const modTitle = allModules.find(m=>m.id===moduleId)?.title||'Module';
+      const subNavHtml = `<div style="padding:1rem 2.5rem 0;" class="content-nav-btns">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:1rem;">
+          <a href="courses.html" class="btn btn-ghost btn-sm">← Courses</a>
+          <button class="btn btn-ghost btn-sm" onclick="showModuleIntro('${moduleId}')">← ${modTitle}</button>
+          ${isPreview ? '<a href="admin.html" class="btn btn-ghost btn-sm">← Admin</a>' : ''}
+        </div>
+      </div>`;
+
       const bannerHtml = sub.bannerImage
         ? `<div class="banner-hero-wrap"><img src="${sub.bannerImage}" class="banner-hero" alt="${sub.title||""}"/></div>`
         : "";
 
       let html = "";
 
-      // Navigation buttons
-      html += `<div style="margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <a href="dashboard.html?course=${selectedCourse}" class="btn btn-ghost btn-sm">← Dashboard</a>
-        <button class="btn btn-ghost btn-sm" onclick="showModuleIntro('${moduleId}')">← ${allModules.find(m=>m.id===moduleId)?.title||'Module'}</button>
-        ${isPreview ? '<a href="admin.html" class="btn btn-ghost btn-sm">← Admin</a>' : ''}
-      </div>`;
-
       html += `<p style="font-family:var(--cinzel);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;font-style:normal;">${sub.order||""}</p>`;
       html += `<h1 class="gold-text" style="margin-bottom:1rem;">${sub.title||""}</h1>`;
       if (sub.description) html += `<p style="margin-bottom:1.5rem;">${sub.description}</p>`;
 
-      if (sub.content) {
-        const blocks = sub.content.split("\n\n").filter(b=>b.trim());
-        blocks.forEach(b => { html += renderContentBlock(b); });
+      // Render from blocksJson first (new format), fall back to content string
+      if (sub.blocks && sub.blocks.length) {
+        sub.blocks.forEach(b => {
+          if (b.type==="text" && b.text) {
+            const isHtml = b.text.includes("<") && b.text.includes(">");
+            html += isHtml
+              ? `<div class="content-block" style="font-style:normal;">${b.text}</div>`
+              : `<p class="content-block">${b.text.replace(/\n/g,"<br/>")}</p>`;
+          } else if (b.type==="image" && b.url) {
+            const imgW = (b.scale && b.scale < 100) ? b.scale+"%" : "100%";
+            html += `<div style="margin:1rem 0;"><img src="${b.url}" style="width:${imgW};max-width:100%;border-radius:12px;border:1px solid var(--border);display:block;"/></div>`;
+            if (b.caption) html += `<p class="content-img-caption">${b.caption}</p>`;
+          } else if (b.type==="video" && b.youtubeId) {
+            html += renderVideosSection([b], moduleId, submoduleId);
+          }
+        });
+      } else if (sub.content) {
+        const textBlocks = sub.content.split("\n\n").filter(b=>b.trim());
+        textBlocks.forEach(b => { html += renderContentBlock(b); });
       }
 
       // Images
@@ -698,7 +719,7 @@
       }
       html += `</div>`;
 
-      document.getElementById("content-area").innerHTML = bannerHtml + `<div class="content-body">${html}</div>`;
+      document.getElementById("content-area").innerHTML = subNavHtml + bannerHtml + `<div class="content-body">${html}</div>`;
       setupVideoPlayers();
     }
 
