@@ -732,6 +732,7 @@
     };
 
     function renderContentBlock(text) {
+      if (!text || !text.trim()) return "";
       // Check if it's an image markdown: ![caption](url)
       const imgMatch = text.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
       if (imgMatch) {
@@ -739,7 +740,12 @@
         if (imgMatch[1]) h += `<p class="content-img-caption">${imgMatch[1]}</p>`;
         return h;
       }
-      return `<p class="content-block">${text}</p>`;
+      // If it looks like HTML (from rich text editor), render as HTML
+      if (text.includes("<") && text.includes(">")) {
+        return `<div class="content-block" style="font-style:normal;">${text}</div>`;
+      }
+      // Plain text — wrap in paragraph with italic style
+      return `<p class="content-block">${text.replace(/\n/g,"<br/>")}</p>`;
     }
 
     function renderVideosSection(videos, moduleId, submoduleId) {
