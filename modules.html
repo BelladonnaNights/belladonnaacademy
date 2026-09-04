@@ -221,19 +221,6 @@
       backBtn.className = "btn btn-ghost btn-sm";
       backBtn.textContent = "← Courses";
       backBtn.style.cssText = "margin-right:auto;font-size:11px;";
-      const progBar = document.querySelector(".prog-bar-wrap") || document.getElementById("app");
-      // Insert at start of app
-      const appEl = document.getElementById("app");
-      if (appEl) {
-        const courseBanner = document.createElement("div");
-        courseBanner.style.cssText = "background:var(--surface);border-bottom:1px solid var(--border);padding:8px 1.5rem;display:flex;align-items:center;gap:12px;";
-        const COURSE_NAMES = {academy:"Belladonna Academy",certification:"Host Certification",trivia:"Trivia Time Transfer"};
-        courseBanner.innerHTML = `
-          <a href="courses.html" class="btn btn-ghost btn-sm" style="font-size:11px;padding:4px 10px;">← Courses</a>
-          <span style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);">${COURSE_NAMES[selectedCourse]||selectedCourse}</span>`;
-        appEl.insertAdjacentElement("afterbegin", courseBanner);
-      }
-
       // In preview mode, treat all modules as unlocked
       [allModules, progress] = await Promise.all([
         loadCourseModules(),
@@ -476,6 +463,12 @@
         ]);
         sub.videos = subVidSnap.docs.map(v=>({id:v.id,...v.data()}));
         sub.images = subImgSnap.docs.map(i=>({id:i.id,...i.data()}));
+        // Parse blocksJson into sub.blocks so the trainee view can render them
+        if (sub.blocksJson) {
+          try { sub.blocks = JSON.parse(sub.blocksJson); } catch(e) { sub.blocks = []; }
+        } else {
+          sub.blocks = [];
+        }
         // Load each sub-sub-module's videos and images
         sub.subsections = await Promise.all(subSubSnap.docs.map(async ss => {
           const ssData = {id:ss.id,...ss.data()};
@@ -526,12 +519,6 @@
       const viewedSubs = progress[moduleId]?.viewedSubmodules || [];
       const allSubsVisited = cached.submodules.length === 0 ||
         cached.submodules.every(s => viewedSubs.includes(s.id));
-
-      // Nav buttons go ABOVE the banner
-      const navHtml = `<div style="padding:1rem 2.5rem 0.5rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <a href="courses.html" class="btn btn-ghost btn-sm">← Courses</a>
-        ${isPreview ? '<a href="admin.html" class="btn btn-ghost btn-sm">← Admin</a>' : ''}
-      </div>`;
 
       // Banner goes full width OUTSIDE the padded body
       let bannerHtml = "";
@@ -603,7 +590,7 @@
       }
 
       // Render: banner full width on top, then padded body content
-      contentArea.innerHTML = navHtml + bannerHtml + `<div class="content-body">${html}</div>`;
+      contentArea.innerHTML = bannerHtml + `<div class="content-body">${html}</div>`;
     }
 
     async function showSubmodule(moduleId, submoduleId) {
@@ -648,15 +635,6 @@
         if (list) list.classList.add("open");
       }
       await loadSubmoduleSidebar(moduleId);
-
-      const modTitle = allModules.find(m=>m.id===moduleId)?.title||'Module';
-      const subNavHtml = `<div style="padding:1rem 2.5rem 0;" class="content-nav-btns">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:1rem;">
-          <a href="courses.html" class="btn btn-ghost btn-sm">← Courses</a>
-          <button class="btn btn-ghost btn-sm" onclick="showModuleIntro('${moduleId}')">← ${modTitle}</button>
-          ${isPreview ? '<a href="admin.html" class="btn btn-ghost btn-sm">← Admin</a>' : ''}
-        </div>
-      </div>`;
 
       const bannerHtml = sub.bannerImage
         ? `<div class="banner-hero-wrap"><img src="${sub.bannerImage}" class="banner-hero" alt="${sub.title||""}"/></div>`
@@ -719,7 +697,7 @@
       }
       html += `</div>`;
 
-      document.getElementById("content-area").innerHTML = subNavHtml + bannerHtml + `<div class="content-body">${html}</div>`;
+      document.getElementById("content-area").innerHTML = bannerHtml + `<div class="content-body">${html}</div>`;
       setupVideoPlayers();
     }
 
