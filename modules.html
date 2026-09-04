@@ -173,6 +173,35 @@
     const urlParams = new URLSearchParams(window.location.search);
     const isPreview = urlParams.get("preview") === "1";
     const previewModuleId = urlParams.get("id");
+    const selectedCourse = urlParams.get("course") || "academy";
+
+    // Load modules from the correct Firestore collection for this course
+    async function loadCourseModules() {
+      if (selectedCourse === "academy") {
+        return loadModules(); // legacy flat collection
+      }
+      const snap = await getDocs(query(collection(db,"courses",selectedCourse,"modules"),orderBy("order")))
+        .catch(() => getDocs(collection(db,"courses",selectedCourse,"modules")));
+      return snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+    }
+
+    // Load progress namespaced by course to avoid cross-course bleed
+    async function loadCourseProgress(uid) {
+      // Use course-prefixed progress keys: "academy_module_1", "trivia_module_1", etc.
+      const snap = await getDocs(collection(db,"users",uid,"progress"));
+      const prog = {};
+      snap.forEach(d => {
+        const key = d.id;
+        // Match keys for this course (prefixed) or legacy unprefixed (academy only)
+        if (key.startsWith(selectedCourse + "_")) {
+          prog[key.replace(selectedCourse+"_","")] = d.data();
+        } else if (selectedCourse === "academy" && !key.includes("_")) {
+          // Legacy: academy progress stored without prefix
+          prog[key] = d.data();
+        }
+      });
+      return prog;
+    }
 
     let currentUser = null;
     let allModules = [], progress = {};
@@ -186,11 +215,29 @@
     requireAuth(async (user, profile) => {
       currentUser = user;
       document.getElementById("nav-placeholder").innerHTML = renderNav(profile, profile.role === "admin");
+      // Add Back to Courses button to progress bar area
+      const backBtn = document.createElement("a");
+      backBtn.href = "courses.html";
+      backBtn.className = "btn btn-ghost btn-sm";
+      backBtn.textContent = "← Courses";
+      backBtn.style.cssText = "margin-right:auto;font-size:11px;";
+      const progBar = document.querySelector(".prog-bar-wrap") || document.getElementById("app");
+      // Insert at start of app
+      const appEl = document.getElementById("app");
+      if (appEl) {
+        const courseBanner = document.createElement("div");
+        courseBanner.style.cssText = "background:var(--surface);border-bottom:1px solid var(--border);padding:8px 1.5rem;display:flex;align-items:center;gap:12px;";
+        const COURSE_NAMES = {academy:"Belladonna Academy",certification:"Host Certification",trivia:"Trivia Time Transfer"};
+        courseBanner.innerHTML = `
+          <a href="courses.html" class="btn btn-ghost btn-sm" style="font-size:11px;padding:4px 10px;">← Courses</a>
+          <span style="font-family:var(--cinzel);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);">${COURSE_NAMES[selectedCourse]||selectedCourse}</span>`;
+        appEl.insertAdjacentElement("afterbegin", courseBanner);
+      }
 
       // In preview mode, treat all modules as unlocked
       [allModules, progress] = await Promise.all([
-        loadModules(),
-        isPreview ? Promise.resolve({}) : loadUserProgress(user.uid)
+        loadCourseModules(),
+        isPreview ? Promise.resolve({}) : loadCourseProgress(user.uid)
       ]);
 
       renderSidebar();
@@ -405,22 +452,27 @@
     };
 
     // ── Fetch module data ─────────────────────────────────────────────────────
+    function getModuleCollBase(moduleId) {
+      if (selectedCourse === "academy") return ["modules", moduleId];
+      return ["courses", selectedCourse, "modules", moduleId];
+    }
+
     async function fetchModuleData(moduleId) {
-      // Set a placeholder immediately so we don't double-fetch
       moduleCache[moduleId] = { submodules:[], videos:[], questions:[] };
       try {
+        const base = getModuleCollBase(moduleId);
         const [subSnap, vidSnap, queSnap] = await Promise.all([
-          getDocs(query(collection(db,"modules",moduleId,"submodules"),orderBy("order"))).catch(()=>({docs:[]})),
-          getDocs(query(collection(db,"modules",moduleId,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
-          getDocs(query(collection(db,"modules",moduleId,"questions"),orderBy("order"))).catch(()=>({docs:[]})),
+          getDocs(query(collection(db,...base,"submodules"),orderBy("order"))).catch(()=>({docs:[]})),
+          getDocs(query(collection(db,...base,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
+          getDocs(query(collection(db,...base,"questions"),orderBy("order"))).catch(()=>({docs:[]})),
         ]);
 
       const submodules = await Promise.all(subSnap.docs.map(async d => {
         const sub = {id:d.id,...d.data()};
         const [subVidSnap, subImgSnap, subSubSnap] = await Promise.all([
-          getDocs(query(collection(db,"modules",moduleId,"submodules",d.id,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
-          getDocs(query(collection(db,"modules",moduleId,"submodules",d.id,"images"),orderBy("order"))).catch(()=>({docs:[]})),
-          getDocs(query(collection(db,"modules",moduleId,"submodules",d.id,"subsections"),orderBy("order"))).catch(()=>({docs:[]})),
+          getDocs(query(collection(db,...getModuleCollBase(moduleId),"submodules",d.id,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
+          getDocs(query(collection(db,...getModuleCollBase(moduleId),"submodules",d.id,"images"),orderBy("order"))).catch(()=>({docs:[]})),
+          getDocs(query(collection(db,...getModuleCollBase(moduleId),"submodules",d.id,"subsections"),orderBy("order"))).catch(()=>({docs:[]})),
         ]);
         sub.videos = subVidSnap.docs.map(v=>({id:v.id,...v.data()}));
         sub.images = subImgSnap.docs.map(i=>({id:i.id,...i.data()}));
@@ -485,7 +537,7 @@
 
       // Navigation buttons
       html += `<div style="margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <a href="dashboard.html" class="btn btn-ghost btn-sm">← Dashboard</a>
+        <a href="dashboard.html?course=${selectedCourse}" class="btn btn-ghost btn-sm">← Dashboard</a>
         ${isPreview ? '<a href="admin.html" class="btn btn-ghost btn-sm">← Back to admin</a>' : ''}
       </div>`;
 
@@ -577,7 +629,8 @@
         viewedSubs.push(submoduleId);
         if (!progress[moduleId]) progress[moduleId] = {};
         progress[moduleId].viewedSubmodules = viewedSubs;
-        await setDoc(doc(db,"users",currentUser.uid,"progress",moduleId),
+        const vKey = selectedCourse === "academy" ? moduleId : selectedCourse+"_"+moduleId;
+        await setDoc(doc(db,"users",currentUser.uid,"progress",vKey),
           {viewedSubmodules: arrayUnion(submoduleId), startedAt: serverTimestamp()},
           {merge:true});
       }
@@ -601,7 +654,7 @@
 
       // Navigation buttons
       html += `<div style="margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <a href="dashboard.html" class="btn btn-ghost btn-sm">← Dashboard</a>
+        <a href="dashboard.html?course=${selectedCourse}" class="btn btn-ghost btn-sm">← Dashboard</a>
         <button class="btn btn-ghost btn-sm" onclick="showModuleIntro('${moduleId}')">← ${mod?.title||'Module'}</button>
         ${isPreview ? '<a href="admin.html" class="btn btn-ghost btn-sm">← Admin</a>' : ''}
       </div>`;
@@ -895,7 +948,7 @@
         resultEl.style.display = "block";
         if (passed) {
           resultEl.className = "result-box result-pass";
-          resultEl.innerHTML = `<div style="font-size:1.5rem;margin-bottom:8px;">✦</div><h2 style="font-family:var(--display);font-size:2rem;letter-spacing:.06em;color:var(--success);">Passed!</h2><p style="color:var(--success);font-style:normal;font-family:var(--cinzel);font-size:11px;letter-spacing:.1em;margin-top:6px;">${score} / ${totalQuestions} correct</p><a href="dashboard.html" class="btn btn-success" style="margin-top:1rem;">Back to Dashboard</a>`;
+          resultEl.innerHTML = `<div style="font-size:1.5rem;margin-bottom:8px;">✦</div><h2 style="font-family:var(--display);font-size:2rem;letter-spacing:.06em;color:var(--success);">Passed!</h2><p style="color:var(--success);font-style:normal;font-family:var(--cinzel);font-size:11px;letter-spacing:.1em;margin-top:6px;">${score} / ${totalQuestions} correct</p><a href="dashboard.html?course=${selectedCourse}" class="btn btn-success" style="margin-top:1rem;">Back to Dashboard</a>`;
           showToast(`Passed! ${score}/${totalQuestions}`, "success");
         } else {
           resultEl.className = "result-box result-fail";
@@ -938,7 +991,8 @@
     // ── Mark module complete (for content-only modules with no quiz) ───────────
     window.markModuleComplete = async function(moduleId) {
       try {
-        await setDoc(doc(db,"users",currentUser.uid,"progress",moduleId),
+        const progressKey = selectedCourse === "academy" ? moduleId : selectedCourse+"_"+moduleId;
+        await setDoc(doc(db,"users",currentUser.uid,"progress",progressKey),
           {status:"passed", quizScore:1, totalQuestions:1, attempts:1, completedAt:serverTimestamp()},
           {merge:true});
         if (!progress[moduleId]) progress[moduleId] = {};
