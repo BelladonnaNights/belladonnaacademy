@@ -25,6 +25,7 @@
       <div class="fade-up" style="margin-bottom:2rem;">
         <p style="font-family:var(--cinzel);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;font-style:normal;">Welcome back,</p>
         <h1 id="user-name">Host</h1>
+        <p style="font-family:var(--cinzel);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-top:4px;font-style:normal;">Course: <span id="course-label"></span> &nbsp;·&nbsp; <a href="courses.html" style="color:var(--gold);text-decoration:none;">Switch course</a></p>
         <p id="cert-banner" style="display:none;margin-top:0.75rem;color:var(--success);font-weight:500;font-size:15px;font-family:var(--cinzel);letter-spacing:.06em;font-style:normal;">✦ Belladonna Certified Host</p>
         <p id="cert-tagline" style="margin-top:0.5rem;">Complete all modules to earn your Belladonna Host Academy credential.</p>
       </div>
@@ -58,14 +59,42 @@
 
     window._logout = doLogout;
 
+    // Read which course was selected from the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedCourse = urlParams.get("course") || "academy";
+
+    // Course definitions for display
+    const COURSE_NAMES = {
+      academy: "Belladonna Academy",
+      certification: "Host Certification",
+      trivia: "Trivia Time Transfer",
+    };
+
+    async function loadCourseModules(courseId) {
+      // Academy uses legacy flat collection; others use courses/{id}/modules
+      if (courseId === "academy") {
+        return loadModules(); // existing helper
+      }
+      // Load from courses subcollection
+      const { getDocs: gd, collection: col, query: q, orderBy: ob } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+      const snap = await gd(q(col(db,"courses",courseId,"modules"),ob("order"))).catch(async()=>{
+        return gd(col(db,"courses",courseId,"modules"));
+      });
+      return snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+    }
+
     requireAuth(async (user, profile) => {
       document.getElementById("nav-placeholder").innerHTML = renderNav(profile, profile.role === "admin");
 
-      const [modules, progress] = await Promise.all([loadModules(), loadUserProgress(user.uid)]);
+      const [modules, progress] = await Promise.all([loadCourseModules(selectedCourse), loadUserProgress(user.uid)]);
       const certSnap = await getDoc(doc(db, "certifications", user.uid));
       const cert = certSnap.exists() ? certSnap.data() : {};
 
       document.getElementById("user-name").textContent = profile.name || "Host";
+
+      // Show which course this dashboard is for
+      const courseLabelEl = document.getElementById("course-label");
+      if (courseLabelEl) courseLabelEl.textContent = COURSE_NAMES[selectedCourse] || selectedCourse;
       if (profile.certified) {
         document.getElementById("cert-banner").style.display = "block";
         document.getElementById("cert-tagline").style.display = "none";
@@ -99,7 +128,7 @@
 
         // All modules always available
         list.innerHTML += `
-          <a href="modules.html?id=${mod.id}" class="module-row ${status==="in_progress"?"active-module":""} ${status==="passed"?"":""}fade-up" style="animation-delay:${0.07*idx+0.1}s;">
+          <a href="modules.html?id=${mod.id}&course=${selectedCourse}" class="module-row ${status==="in_progress"?"active-module":""} ${status==="passed"?"":""}fade-up" style="animation-delay:${0.07*idx+0.1}s;">
             <div class="mod-circle ${circleClass}">${status==="passed"?"✓":idx+1}</div>
             <div style="flex:1;">
               <div style="font-family:var(--cinzel);font-size:13px;font-weight:600;letter-spacing:.04em;margin-bottom:2px;">${mod.title||"Module "+(idx+1)}</div>
