@@ -655,7 +655,7 @@
       // Navigation buttons
       html += `<div style="margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <a href="dashboard.html?course=${selectedCourse}" class="btn btn-ghost btn-sm">← Dashboard</a>
-        <button class="btn btn-ghost btn-sm" onclick="showModuleIntro('${moduleId}')">← ${mod?.title||'Module'}</button>
+        <button class="btn btn-ghost btn-sm" onclick="showModuleIntro('${moduleId}')">← ${allModules.find(m=>m.id===moduleId)?.title||'Module'}</button>
         ${isPreview ? '<a href="admin.html" class="btn btn-ghost btn-sm">← Admin</a>' : ''}
       </div>`;
 
