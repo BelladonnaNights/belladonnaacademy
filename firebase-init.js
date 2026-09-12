@@ -4,12 +4,12 @@ import { getFirestore, doc, getDoc, setDoc, getDocs, collection, query, orderBy,
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDevR1vTnu6QlBG0zfGcnD4XCrEYO1MjQ8",
-  authDomain: "belladonnatraining.firebaseapp.com",
-  projectId: "belladonnatraining",
-  storageBucket: "belladonnatraining.firebasestorage.app",
-  messagingSenderId: "701454253182",
-  appId: "1:701454253182:web:1cc377e3c742e369c8ac2f"
+  apiKey: "AIzaSyCIfAE1JGHsUGzzVH2pz1Vyj5b5OhA0tDQ",
+  authDomain: "belladonna-hq.firebaseapp.com",
+  projectId: "belladonna-hq",
+  storageBucket: "belladonna-hq.firebasestorage.app",
+  messagingSenderId: "1021873183587",
+  appId: "1:1021873183587:web:def283bb7b5ca48e4f9156"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -132,7 +132,7 @@ export async function loadUserProgress(uid) {
 }
 
 export async function loadModules() {
-  const snap = await getDocs(query(collection(db, "modules"), orderBy("order")));
+  const snap = await getDocs(query(collection(db, "training_modules"), orderBy("order")));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
