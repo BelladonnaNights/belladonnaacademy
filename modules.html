@@ -180,8 +180,8 @@
       if (selectedCourse === "academy") {
         return loadModules(); // legacy flat collection
       }
-      const snap = await getDocs(query(collection(db,"courses",selectedCourse,"modules"),orderBy("order")))
-        .catch(() => getDocs(collection(db,"courses",selectedCourse,"modules")));
+      const snap = await getDocs(query(collection(db,"training_courses",selectedCourse,"modules"),orderBy("order")))
+        .catch(() => getDocs(collection(db,"training_courses",selectedCourse,"modules")));
       return snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
     }
 
@@ -473,8 +473,8 @@
         sub.subsections = await Promise.all(subSubSnap.docs.map(async ss => {
           const ssData = {id:ss.id,...ss.data()};
           const [ssVids, ssImgs] = await Promise.all([
-            getDocs(query(collection(db,"modules",moduleId,"submodules",d.id,"subsections",ss.id,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
-            getDocs(query(collection(db,"modules",moduleId,"submodules",d.id,"subsections",ss.id,"images"),orderBy("order"))).catch(()=>({docs:[]})),
+            getDocs(query(collection(db,"training_modules",moduleId,"submodules",d.id,"subsections",ss.id,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
+            getDocs(query(collection(db,"training_modules",moduleId,"submodules",d.id,"subsections",ss.id,"images"),orderBy("order"))).catch(()=>({docs:[]})),
           ]);
           ssData.videos = ssVids.docs.map(v=>({id:v.id,...v.data()}));
           ssData.images = ssImgs.docs.map(i=>({id:i.id,...i.data()}));
