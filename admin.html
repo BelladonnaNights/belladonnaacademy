@@ -309,7 +309,8 @@
   <div class="toast-wrap" id="toast-wrap"></div>
 
   <script type="module">
-    import { requireAdmin, renderNav, doLogout, db, showToast, adminSignOffFn, revokeSignOffFn, createTrainee } from "./firebase-init.js";
+    import { requireAdmin, renderNav, doLogout, db, auth, showToast, adminSignOffFn, revokeSignOffFn, createTrainee } from "./firebase-init.js";
+    import { sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, serverTimestamp, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     window._logout = doLogout;
@@ -390,23 +391,23 @@
       // New structure: courses/{courseId}/modules
       // Fall back to legacy flat "modules" collection for academy (backwards compat)
       if (currentCourse === "academy") {
-        return collection(db,"modules"); // legacy — existing academy modules stay here
+        return collection(db,"training_modules"); // legacy — existing academy modules stay here
       }
-      return collection(db,"courses",currentCourse,"modules");
+      return collection(db,"training_courses",currentCourse,"modules");
     }
 
     function getModuleDocRef(moduleId) {
       if (currentCourse === "academy") {
-        return doc(db,"modules",moduleId);
+        return doc(db,"training_modules",moduleId);
       }
-      return doc(db,"courses",currentCourse,"modules",moduleId);
+      return doc(db,"training_courses",currentCourse,"modules",moduleId);
     }
 
     function getSubcollectionRef(moduleId, subcoll) {
       if (currentCourse === "academy") {
-        return collection(db,"modules",moduleId,subcoll);
+        return collection(db,"training_modules",moduleId,subcoll);
       }
-      return collection(db,"courses",currentCourse,"modules",moduleId,subcoll);
+      return collection(db,"training_courses",currentCourse,"modules",moduleId,subcoll);
     }
 
     async function loadAllModules() {
@@ -449,18 +450,18 @@
       m.submodules = await Promise.all(subSnap.docs.map(async sd=>{
         const sub={id:sd.id,...sd.data()};
         const [svSnap,siSnap]=await Promise.all([
-          getDocs(query(collection(db,"modules",m.id,"submodules",sd.id,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
-          getDocs(query(collection(db,"modules",m.id,"submodules",sd.id,"images"),orderBy("order"))).catch(()=>({docs:[]})),
+          getDocs(query(collection(db,"training_modules",m.id,"submodules",sd.id,"videos"),orderBy("order"))).catch(()=>({docs:[]})),
+          getDocs(query(collection(db,"training_modules",m.id,"submodules",sd.id,"images"),orderBy("order"))).catch(()=>({docs:[]})),
         ]);
         sub.videos=svSnap.docs.map(v=>({id:v.id,...v.data()}));
         sub.images=siSnap.docs.map(i=>({id:i.id,...i.data()}));
         // Load subsections (sub-sub-modules)
-        const ssSnap = await getDocs(query(collection(db,"modules",m.id,"submodules",sd.id,"subsections"),orderBy("order"))).catch(()=>({docs:[]}));
+        const ssSnap = await getDocs(query(collection(db,"training_modules",m.id,"submodules",sd.id,"subsections"),orderBy("order"))).catch(()=>({docs:[]}));
         sub.subsections = await Promise.all(ssSnap.docs.map(async ss => {
           const ssData={id:ss.id,...ss.data()};
           const [ssVids,ssImgs]=await Promise.all([
-            getDocs(collection(db,"modules",m.id,"submodules",sd.id,"subsections",ss.id,"videos")).catch(()=>({docs:[]})),
-            getDocs(collection(db,"modules",m.id,"submodules",sd.id,"subsections",ss.id,"images")).catch(()=>({docs:[]})),
+            getDocs(collection(db,"training_modules",m.id,"submodules",sd.id,"subsections",ss.id,"videos")).catch(()=>({docs:[]})),
+            getDocs(collection(db,"training_modules",m.id,"submodules",sd.id,"subsections",ss.id,"images")).catch(()=>({docs:[]})),
           ]);
           ssData.videos=ssVids.docs.map(v=>({id:v.id,...v.data()}));
           ssData.images=ssImgs.docs.map(i=>({id:i.id,...i.data()}));
@@ -726,8 +727,8 @@
         try {
           const subSnap = await getDocs(getSubmoduleCollRef(mod.id));
           for (const sd of subSnap.docs) {
-            const svSnap=await getDocs(collection(db,"modules",mod.id,"submodules",sd.id,"videos"));
-            const siSnap=await getDocs(collection(db,"modules",mod.id,"submodules",sd.id,"images"));
+            const svSnap=await getDocs(collection(db,"training_modules",mod.id,"submodules",sd.id,"videos"));
+            const siSnap=await getDocs(collection(db,"training_modules",mod.id,"submodules",sd.id,"images"));
             await Promise.all([...svSnap.docs,...siSnap.docs].map(d=>deleteDoc(d.ref)));
             await deleteDoc(sd.ref);
           }
@@ -784,8 +785,8 @@
       if (!sub._new) {
         try {
           const mod = modulesData[mi];
-          const svSnap=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"videos"));
-          const siSnap=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"images"));
+          const svSnap=await getDocs(collection(db,"training_modules",mod.id,"submodules",sub.id,"videos"));
+          const siSnap=await getDocs(collection(db,"training_modules",mod.id,"submodules",sub.id,"images"));
           await Promise.all([...svSnap.docs,...siSnap.docs].map(d=>deleteDoc(d.ref)));
           await deleteDoc(getSubmoduleDocRef(mod.id,sub.id));
         } catch(e){ showToast("Error deleting.","error"); return; }
@@ -1399,12 +1400,12 @@
 
     // ── Save submodule ────────────────────────────────────────────────────────
     function getSubmoduleCollRef(moduleId) {
-      if (currentCourse === "academy") return collection(db,"modules",moduleId,"submodules");
-      return collection(db,"courses",currentCourse,"modules",moduleId,"submodules");
+      if (currentCourse === "academy") return collection(db,"training_modules",moduleId,"submodules");
+      return collection(db,"training_courses",currentCourse,"modules",moduleId,"submodules");
     }
     function getSubmoduleDocRef(moduleId, subId) {
-      if (currentCourse === "academy") return doc(db,"modules",moduleId,"submodules",subId);
-      return doc(db,"courses",currentCourse,"modules",moduleId,"submodules",subId);
+      if (currentCourse === "academy") return doc(db,"training_modules",moduleId,"submodules",subId);
+      return doc(db,"training_courses",currentCourse,"modules",moduleId,"submodules",subId);
     }
 
     window.saveSubmodule = async function(mi, si, silent=false) {
@@ -1446,22 +1447,22 @@
         await Promise.all(imageBlocks.map((img,i)=>setDoc(doc(collection(getSubmoduleDocRef(mod.id,sub.id),"images"),`img_${i+1}`),{id:`img_${i+1}`,order:i+1,url:img.url||"",caption:img.caption||""})));
 
         // Save subsections (sub-sub-modules)
-        const oldSS=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"subsections"));
+        const oldSS=await getDocs(collection(db,"training_modules",mod.id,"submodules",sub.id,"subsections"));
         await Promise.all(oldSS.docs.map(d=>deleteDoc(d.ref)));
         await Promise.all((sub.subsections||[]).map(async (ss,ssi)=>{
           const ssContent=(ss.contentBlocks||[]).map(b=>b.text||"").filter(t=>t).join("\n\n");
-          await setDoc(doc(db,"modules",mod.id,"submodules",sub.id,"subsections",ss.id||`ss_${ssi+1}`),{
+          await setDoc(doc(db,"training_modules",mod.id,"submodules",sub.id,"subsections",ss.id||`ss_${ssi+1}`),{
             id:ss.id||`ss_${ssi+1}`,order:ss.order||"",title:ss.title||"",
             description:ss.description||"",content:ssContent,bannerImage:ss.bannerImage||""
           });
           // Save subsection videos
-          const oldSSV=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"subsections",ss.id,"videos"));
+          const oldSSV=await getDocs(collection(db,"training_modules",mod.id,"submodules",sub.id,"subsections",ss.id,"videos"));
           await Promise.all(oldSSV.docs.map(d=>deleteDoc(d.ref)));
-          await Promise.all((ss.videos||[]).map((v,vi)=>setDoc(doc(db,"modules",mod.id,"submodules",sub.id,"subsections",ss.id,"videos",v.id||`ssv_${vi+1}`),{id:v.id||`ssv_${vi+1}`,order:vi+1,title:v.title||"",youtubeId:v.youtubeId||""})));
+          await Promise.all((ss.videos||[]).map((v,vi)=>setDoc(doc(db,"training_modules",mod.id,"submodules",sub.id,"subsections",ss.id,"videos",v.id||`ssv_${vi+1}`),{id:v.id||`ssv_${vi+1}`,order:vi+1,title:v.title||"",youtubeId:v.youtubeId||""})));
           // Save subsection images
-          const oldSSI=await getDocs(collection(db,"modules",mod.id,"submodules",sub.id,"subsections",ss.id,"images"));
+          const oldSSI=await getDocs(collection(db,"training_modules",mod.id,"submodules",sub.id,"subsections",ss.id,"images"));
           await Promise.all(oldSSI.docs.map(d=>deleteDoc(d.ref)));
-          await Promise.all((ss.images||[]).map((img,ii)=>setDoc(doc(db,"modules",mod.id,"submodules",sub.id,"subsections",ss.id,"images",img.id||`ssi_${ii+1}`),{id:img.id||`ssi_${ii+1}`,order:ii+1,url:img.url||"",caption:img.caption||""})));
+          await Promise.all((ss.images||[]).map((img,ii)=>setDoc(doc(db,"training_modules",mod.id,"submodules",sub.id,"subsections",ss.id,"images",img.id||`ssi_${ii+1}`),{id:img.id||`ssi_${ii+1}`,order:ii+1,url:img.url||"",caption:img.caption||""})));
         }));
 
         sub._new=false;
@@ -1514,8 +1515,7 @@
       btn.textContent="Adding...";btn.disabled=true;
       try {
         const result=await createTrainee(email,password,name);
-        // Store temp password in Firestore so admin can look it up
-        await setDoc(doc(db,"users",result.uid),{tempPassword:password},{merge:true});
+        // Password is shown once below (in-memory only, this session) — never stored in Firestore.
         showToast(`${name} added!`,"success");
         document.getElementById("new-name").value="";
         document.getElementById("new-email").value="";
@@ -1532,7 +1532,7 @@
     };
 
     async function loadTrainees() {
-      const [usersSnap,certsSnap]=await Promise.all([getDocs(collection(db,"users")),getDocs(collection(db,"certifications"))]);
+      const [usersSnap,certsSnap]=await Promise.all([getDocs(collection(db,"users")),getDocs(collection(db,"training_certifications"))]);
       allTrainees=usersSnap.docs.map(d=>({id:d.id,...d.data()})).filter(u=>u.role!=="admin");
       certsSnap.forEach(d=>{certMap[d.id]=d.data();});
       await Promise.all(allTrainees.map(async u=>{
@@ -1692,26 +1692,20 @@
     };
 
     window.updatePassword = async function(uid) {
-      const newPw = prompt("Enter a new password for this trainee (min 6 characters):");
-      if (!newPw) return;
-      if (newPw.length < 6) { alert("Password must be at least 6 characters."); return; }
+      const t = allTrainees.find(t=>t.id===uid);
+      if (!t?.email) { showToast("No email on file for this trainee.","error"); return; }
+      if (!confirm(`Send a password reset email to ${t.name} (${t.email})?`)) return;
       try {
-        // Save to Firestore so admin can see it
-        await setDoc(doc(db,"users",uid),{tempPassword:newPw},{merge:true});
-        // Update local
-        const t = allTrainees.find(t=>t.id===uid);
-        if (t) t.tempPassword = newPw;
-        showToast("Password updated in records. Note: this does NOT change their Firebase Auth password — they'll need to use this to log in only if you also reset it in Firebase Auth console.","info");
-        // Refresh detail view
-        document.getElementById(`detail-${uid}`).innerHTML = buildDetail(t, certMap[uid]||{});
+        await sendPasswordResetEmail(auth, t.email);
+        showToast("Reset email sent — they'll get a link to set a new password themselves.","success");
       } catch(e) {
-        showToast("Failed to save password.","error");
+        showToast("Failed to send reset email: "+e.message,"error");
       }
     };
 
     window.toggleTrainee=function(uid){const d=document.getElementById(`detail-${uid}`),c=document.getElementById(`chev-${uid}`),h=d.previousElementSibling,o=d.classList.contains("open");d.classList.toggle("open",!o);c.classList.toggle("open",!o);h.classList.toggle("expanded",!o);};
-    window.handleSignOff=async function(uid,sk,dk){try{await adminSignOffFn({traineeUid:uid,stepKey:sk,dateKey:dk});const s=await getDoc(doc(db,"certifications",uid));certMap[uid]=s.exists()?s.data():{};const u=await getDoc(doc(db,"users",uid));if(u.data()?.certified){const t=allTrainees.find(t=>t.id===uid);if(t)t.certified=true;showToast(`${t?.name} is Certified!`,"success");}else{showToast("Sign-off recorded.","success");}document.getElementById(`detail-${uid}`).innerHTML=buildDetail(allTrainees.find(t=>t.id===uid),certMap[uid]||{});}catch(e){showToast("Sign-off failed.","error");}};
-    window.handleRevoke=async function(uid,sk,dk){if(!confirm("Revoke?"))return;try{await revokeSignOffFn({traineeUid:uid,stepKey:sk,dateKey:dk});const s=await getDoc(doc(db,"certifications",uid));certMap[uid]=s.exists()?s.data():{};const t=allTrainees.find(t=>t.id===uid);if(t)t.certified=false;showToast("Revoked.","info");document.getElementById(`detail-${uid}`).innerHTML=buildDetail(t,certMap[uid]||{});}catch(e){showToast("Failed.","error");}};
+    window.handleSignOff=async function(uid,sk,dk){try{await adminSignOffFn({traineeUid:uid,stepKey:sk,dateKey:dk});const s=await getDoc(doc(db,"training_certifications",uid));certMap[uid]=s.exists()?s.data():{};const u=await getDoc(doc(db,"users",uid));if(u.data()?.certified){const t=allTrainees.find(t=>t.id===uid);if(t)t.certified=true;showToast(`${t?.name} is Certified!`,"success");}else{showToast("Sign-off recorded.","success");}document.getElementById(`detail-${uid}`).innerHTML=buildDetail(allTrainees.find(t=>t.id===uid),certMap[uid]||{});}catch(e){showToast("Sign-off failed.","error");}};
+    window.handleRevoke=async function(uid,sk,dk){if(!confirm("Revoke?"))return;try{await revokeSignOffFn({traineeUid:uid,stepKey:sk,dateKey:dk});const s=await getDoc(doc(db,"training_certifications",uid));certMap[uid]=s.exists()?s.data():{};const t=allTrainees.find(t=>t.id===uid);if(t)t.certified=false;showToast("Revoked.","info");document.getElementById(`detail-${uid}`).innerHTML=buildDetail(t,certMap[uid]||{});}catch(e){showToast("Failed.","error");}};
 
     window.saveProfile = async function(uid) {
       const djName = document.getElementById(`djname-${uid}`)?.value.trim()||"";
@@ -1733,7 +1727,7 @@
       try {
         const progSnap=await getDocs(collection(db,"users",uid,"progress"));
         await Promise.all(progSnap.docs.map(d=>deleteDoc(d.ref)));
-        await deleteDoc(doc(db,"certifications",uid)).catch(()=>{});
+        await deleteDoc(doc(db,"training_certifications",uid)).catch(()=>{});
         await deleteDoc(doc(db,"users",uid));
         const idx=allTrainees.findIndex(t=>t.id===uid);
         if(idx!==-1)allTrainees.splice(idx,1);
@@ -1764,7 +1758,7 @@
       try {
         const progSnap = await getDocs(collection(db,"users",uid,"progress"));
         await Promise.all(progSnap.docs.map(d=>deleteDoc(d.ref)));
-        await deleteDoc(doc(db,"certifications",uid)).catch(()=>{});
+        await deleteDoc(doc(db,"training_certifications",uid)).catch(()=>{});
         await deleteDoc(doc(db,"users",uid));
         const idx = allTrainees.findIndex(t=>t.id===uid);
         if (idx !== -1) allTrainees.splice(idx,1);
@@ -1983,7 +1977,7 @@
 
     async function loadCodes() {
       try {
-        const snap = await getDocs(collection(db,"accessCodes"));
+        const snap = await getDocs(collection(db,"training_accessCodes"));
         codesData = snap.docs.map(d=>({id:d.id,...d.data()}));
         renderCodes();
       } catch(e) {
@@ -2041,7 +2035,7 @@
       if (codesData.find(c=>c.code===code)) { errEl.textContent="That code already exists."; errEl.style.display="block"; return; }
       const COURSE_NAMES = {certification:"Host Certification",academy:"Belladonna Academy",trivia:"Trivia Time Transfer"};
       try {
-        const newRef = doc(collection(db,"accessCodes"));
+        const newRef = doc(collection(db,"training_accessCodes"));
         const data = {code, course, courseName:COURSE_NAMES[course]||course, active:true, createdAt:serverTimestamp()};
         await setDoc(newRef, data);
         codesData.push({id:newRef.id,...data});
@@ -2054,7 +2048,7 @@
 
     window.toggleCode = async function(id, currentlyActive) {
       try {
-        await setDoc(doc(db,"accessCodes",id),{active:!currentlyActive},{merge:true});
+        await setDoc(doc(db,"training_accessCodes",id),{active:!currentlyActive},{merge:true});
         const c = codesData.find(c=>c.id===id);
         if (c) c.active=!currentlyActive;
         renderCodes();
@@ -2065,7 +2059,7 @@
     window.deleteCode = async function(id) {
       if (!confirm("Delete this access code?")) return;
       try {
-        await deleteDoc(doc(db,"accessCodes",id));
+        await deleteDoc(doc(db,"training_accessCodes",id));
         codesData = codesData.filter(c=>c.id!==id);
         renderCodes();
         showToast("Code deleted.","success");
@@ -2126,7 +2120,7 @@
 
     async function loadBlurbs() {
       try {
-        const snap = await getDoc(doc(db,"settings","courses"));
+        const snap = await getDoc(doc(db,"training_settings","courses"));
         const data = snap.exists() ? snap.data() : {};
         const hEl = document.getElementById("page-heading");
         const sEl = document.getElementById("page-subheading");
@@ -2153,7 +2147,7 @@
         data[`${course.id}Order`]   = parseInt(document.getElementById(`order-${course.id}`)?.value)||i+1;
       });
       try {
-        await setDoc(doc(db,"settings","courses"), data, {merge:true});
+        await setDoc(doc(db,"training_settings","courses"), data, {merge:true});
         statusEl.textContent = "✓ Saved"; statusEl.style.color="var(--success)";
         showToast("Course page saved.","success");
         setTimeout(()=>{ statusEl.textContent=""; },3000);
