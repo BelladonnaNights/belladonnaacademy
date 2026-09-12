@@ -249,7 +249,6 @@
       try {
         const auth = getAuth();
         await updatePassword(auth.currentUser, newPw);
-        await setDoc(doc(db,"users",currentUser.uid), {tempPassword: newPw}, {merge:true});
         document.getElementById("field-newpw").value = "";
         document.getElementById("field-confirmpw").value = "";
         successEl.textContent = "Password updated successfully.";
