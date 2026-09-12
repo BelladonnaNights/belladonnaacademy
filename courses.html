@@ -152,7 +152,7 @@
 
       // Load site settings (blurbs, taglines) from Firestore
       try {
-        const settingsSnap = await getDoc(doc(db,"settings","courses"));
+        const settingsSnap = await getDoc(doc(db,"training_settings","courses"));
         if (settingsSnap.exists()) siteSettings = settingsSnap.data();
       } catch(e) {}
 
@@ -260,7 +260,7 @@
 
       try {
         // Check code against Firestore
-        const codesSnap = await getDocs(collection(db,"accessCodes"));
+        const codesSnap = await getDocs(collection(db,"training_accessCodes"));
         let matched = null;
         codesSnap.forEach(d => {
           const data = d.data();
